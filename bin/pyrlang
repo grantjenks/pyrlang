@@ -1,0 +1,7 @@
+#!/usr/bin/env escript
+
+main(Args) ->
+    Script = filename:absname(escript:script_name()),
+    Root = filename:dirname(filename:dirname(Script)),
+    _ = code:add_patha(filename:join(Root, "ebin")),
+    pyrlang_cli:main(Args).

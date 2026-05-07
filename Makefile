@@ -1,0 +1,27 @@
+ERLC ?= erlc
+ERL ?= erl
+
+EBIN := ebin
+INCLUDE := include
+SRC := $(wildcard src/*.erl)
+TEST := $(wildcard test/*_tests.erl)
+MODULES := pyrlang_heap_tests, pyrlang_actor_tests, pyrlang_eval_tests, pyrlang_object_tests, pyrlang_module_tests, pyrlang_supervisor_tests, pyrlang_sqlite_tests, pyrunicorn_wsgi_tests, pyrlang_cli_tests
+
+.PHONY: all compile test entrypoints clean
+
+all: compile
+
+$(EBIN):
+	mkdir -p $(EBIN)
+
+compile: $(EBIN)
+	$(ERLC) -Wall -I $(INCLUDE) -o $(EBIN) $(SRC) $(TEST)
+
+test: compile
+	$(ERL) -pa $(EBIN) -noshell -eval 'case eunit:test([$(MODULES)], [verbose]) of ok -> halt(0); _ -> halt(1) end.'
+
+entrypoints: compile
+	chmod +x bin/pyrlang bin/pyrunicorn
+
+clean:
+	rm -rf $(EBIN)
