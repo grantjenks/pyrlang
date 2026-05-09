@@ -1230,13 +1230,6 @@ string_subclass_has_custom_str_mro([Class | Rest]) ->
             end
     end.
 
-builtin_str_varargs([]) ->
-    <<>>;
-builtin_str_varargs([Value]) ->
-    builtin_str(Value);
-builtin_str_varargs(Args) ->
-    erlang:error({arity_error, {str, length(Args)}}).
-
 builtin_str_call(Args, KwArgs) ->
     ensure_allowed_kwargs(KwArgs, [<<"encoding">>, <<"errors">>], str),
     case Args of

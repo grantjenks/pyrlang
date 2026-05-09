@@ -3301,15 +3301,6 @@ three_digit(Value) when Value < 100 ->
 three_digit(Value) ->
     integer_to_binary(Value).
 
-identity_decorator(Callable) ->
-    try
-        ok = pyrlang_object:set_attr(Callable, <<"cache_clear">>, fun() -> none end),
-        ok = pyrlang_object:set_attr(Callable, <<"cache_info">>, fun() -> none end)
-    catch
-        _:_ -> ok
-    end,
-    Callable.
-
 functools_wrapper_assignments() ->
     {<<"__module__">>, <<"__name__">>, <<"__qualname__">>, <<"__doc__">>, <<"__annotations__">>, <<"__type_params__">>}.
 

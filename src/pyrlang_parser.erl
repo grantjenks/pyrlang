@@ -1397,9 +1397,6 @@ parse_param(Param) ->
             {param, list_to_binary(TrimmedName), undefined, Annotation}
     end.
 
-strip_param_annotation(NameText) ->
-    element(1, parse_param_name_annotation(NameText)).
-
 parse_param_name_annotation(NameText) ->
     case string:split(NameText, ":", leading) of
         [Name, AnnotationSource] ->
