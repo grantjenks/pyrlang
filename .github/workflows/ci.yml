@@ -46,10 +46,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Set up Python stdlib
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
       - name: Set up Erlang/OTP
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
+
+      - name: Export Python module paths
+        run: |
+          python - <<'PY' >> "$GITHUB_ENV"
+          import os
+          import sysconfig
+
+          names = ("stdlib", "platstdlib", "purelib", "platlib")
+          paths = [sysconfig.get_path(name) for name in names]
+          paths = [path for path in dict.fromkeys(paths) if path and os.path.isdir(path)]
+          print("PYTHONPATH=" + os.pathsep.join(paths))
+          PY
 
       - name: Install test dependencies
         run: |
@@ -59,6 +76,13 @@ jobs:
       - name: Show tool versions
         run: |
           erl -noshell -eval 'io:format("OTP ~s~n", [erlang:system_info(otp_release)]), halt(0).'
+          python - <<'PY'
+          import sys
+          import sysconfig
+
+          print(sys.version)
+          print("stdlib", sysconfig.get_path("stdlib"))
+          PY
           sqlite3 --version
           psql --version
 
