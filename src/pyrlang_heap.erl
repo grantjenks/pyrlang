@@ -104,8 +104,8 @@ ensure() ->
 saved_process_state() ->
     [
         {Key, Value}
-        || Key <- [pyrlang_module_path, pyrlang_os_environ, pyrlang_sys_argv],
-           (Value = erlang:get(Key)) =/= undefined
+     || Key <- [pyrlang_module_path, pyrlang_os_environ, pyrlang_sys_argv],
+        (Value = erlang:get(Key)) =/= undefined
     ].
 
 restore_process_state(SavedState) ->
@@ -284,7 +284,8 @@ dict_pairs_find(_Key, []) ->
     error;
 dict_pairs_find(Key, [{ExistingKey, Value} | Rest]) ->
     case value_key(ExistingKey) =:= value_key(Key) of
-        true -> {ok, Value};
+        true ->
+            {ok, Value};
         false ->
             case values_equal(Key, ExistingKey) of
                 true -> {ok, Value};
@@ -337,7 +338,8 @@ set_remove(Ref, Value) ->
 set_contains(Ref, Value) ->
     set = type(Ref),
     Data = data(Ref),
-    maps:is_key(value_key(Value), Data) orelse lists:any(fun(Existing) -> values_equal(Value, Existing) end, maps:values(Data)).
+    maps:is_key(value_key(Value), Data) orelse
+        lists:any(fun(Existing) -> values_equal(Value, Existing) end, maps:values(Data)).
 
 values_equal(Left, Right) ->
     try pyrlang_eval:eval_compare(eq, Left, Right) of

@@ -1,6 +1,12 @@
 -module(pyrlang_sqlite).
 
--export([connect/1, execute/2, execute/3, execute_rowcount/2, execute_rowcount/3, query/2, query/3, close/1]).
+-export([
+    connect/1,
+    execute/2, execute/3,
+    execute_rowcount/2, execute_rowcount/3,
+    query/2, query/3,
+    close/1
+]).
 
 -define(SQLITE_NULL_VALUE, <<"__PYL_NULL__">>).
 
@@ -48,7 +54,8 @@ close(Pid) ->
     pyrlang_actor:send(Pid, close).
 
 call_connection(Pid, Request) ->
-    try pyrlang_actor:call_monitored(Pid, Request, 10000)
+    try
+        pyrlang_actor:call_monitored(Pid, Request, 10000)
     catch
         error:{actor_down, _Pid, Reason} ->
             {error, {dbapi_operational_error, {connection_down, Reason}}};
@@ -121,7 +128,8 @@ execute_sql(Path, Sql, State = #{transaction := true, pending := Pending}) ->
 
 run_execute_sql(Path, Sql) ->
     case dml_statement(Sql) of
-        true -> parse_changes_output(run_sql(Path, changes_sql(Sql)));
+        true ->
+            parse_changes_output(run_sql(Path, changes_sql(Sql)));
         false ->
             _ = run_sql(Path, Sql),
             -1
@@ -129,7 +137,10 @@ run_execute_sql(Path, Sql) ->
 
 run_transaction_check(Path, Pending, Sql) ->
     case dml_statement(Sql) of
-        true -> parse_changes_output(run_sql(Path, transaction_sql(Pending ++ [Sql, "SELECT changes()", rollback_tx])));
+        true ->
+            parse_changes_output(
+                run_sql(Path, transaction_sql(Pending ++ [Sql, "SELECT changes()", rollback_tx]))
+            );
         false ->
             _ = run_sql(Path, transaction_sql(Pending ++ [Sql, rollback_tx])),
             -1
@@ -296,7 +307,10 @@ escape_sql([Ch | Rest]) ->
     [Ch | escape_sql(Rest)].
 
 parse_csv(Output) ->
-    Lines = [Line || Line <- binary:split(trim_trailing_newline(Output), <<"\n">>, [global]), Line =/= <<>>],
+    Lines = [
+        Line
+     || Line <- binary:split(trim_trailing_newline(Output), <<"\n">>, [global]), Line =/= <<>>
+    ],
     [parse_csv_line(Line) || Line <- Lines].
 
 parse_csv_line(Line) ->
@@ -382,6 +396,8 @@ trace_sql(Sql) ->
 
 trace_sql_error(Status, Output) ->
     case os:getenv("PYRLANG_TRACE_SQLITE") of
-        false -> ok;
-        _ -> io:format(standard_error, "PYRLANG_SQLITE_ERROR status=~p output=~p~n", [Status, Output])
+        false ->
+            ok;
+        _ ->
+            io:format(standard_error, "PYRLANG_SQLITE_ERROR status=~p output=~p~n", [Status, Output])
     end.

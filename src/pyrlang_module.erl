@@ -58,8 +58,10 @@ site_package_paths() ->
     Preferred = [
         ".venv/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages",
         "venv/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages",
-        "/Library/Frameworks/Python.framework/Versions/" ++ ?PY_STDLIB_VERSION ++ "/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages",
-        "/Library/Frameworks/Python.framework/Versions/Current/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages",
+        "/Library/Frameworks/Python.framework/Versions/" ++ ?PY_STDLIB_VERSION ++ "/lib/python" ++
+            ?PY_STDLIB_VERSION ++ "/site-packages",
+        "/Library/Frameworks/Python.framework/Versions/Current/lib/python" ++ ?PY_STDLIB_VERSION ++
+            "/site-packages",
         "/usr/local/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages",
         "/usr/lib/python" ++ ?PY_STDLIB_VERSION ++ "/site-packages"
     ],
@@ -69,7 +71,8 @@ stdlib_paths() ->
     Preferred = [
         ".venv/lib/python" ++ ?PY_STDLIB_VERSION,
         "venv/lib/python" ++ ?PY_STDLIB_VERSION,
-        "/Library/Frameworks/Python.framework/Versions/" ++ ?PY_STDLIB_VERSION ++ "/lib/python" ++ ?PY_STDLIB_VERSION,
+        "/Library/Frameworks/Python.framework/Versions/" ++ ?PY_STDLIB_VERSION ++ "/lib/python" ++
+            ?PY_STDLIB_VERSION,
         "/Library/Frameworks/Python.framework/Versions/Current/lib/python" ++ ?PY_STDLIB_VERSION,
         "/usr/local/lib/python" ++ ?PY_STDLIB_VERSION,
         "/usr/lib/python" ++ ?PY_STDLIB_VERSION
@@ -82,23 +85,30 @@ user_site_paths() ->
             [];
         Home ->
             [
-                filename:join([Home, "Library", "Python", ?PY_STDLIB_VERSION, "lib", "python", "site-packages"]),
-                filename:join([Home, ".local", "lib", "python" ++ ?PY_STDLIB_VERSION, "site-packages"])
+                filename:join([
+                    Home, "Library", "Python", ?PY_STDLIB_VERSION, "lib", "python", "site-packages"
+                ]),
+                filename:join([
+                    Home, ".local", "lib", "python" ++ ?PY_STDLIB_VERSION, "site-packages"
+                ])
             ]
     end.
 
 unique_paths(Paths) ->
     lists:reverse(
-        element(2, lists:foldl(
-            fun(Path, {Seen, Acc}) ->
-                case maps:is_key(Path, Seen) of
-                    true -> {Seen, Acc};
-                    false -> {Seen#{Path => true}, [Path | Acc]}
-                end
-            end,
-            {#{}, []},
-            Paths
-        ))
+        element(
+            2,
+            lists:foldl(
+                fun(Path, {Seen, Acc}) ->
+                    case maps:is_key(Path, Seen) of
+                        true -> {Seen, Acc};
+                        false -> {Seen#{Path => true}, [Path | Acc]}
+                    end
+                end,
+                {#{}, []},
+                Paths
+            )
+        )
     ).
 
 -spec set_os_environ(map() | [{term(), term()}]) -> ok.
@@ -270,13 +280,21 @@ trace_getpass(Event) ->
 tty_state() ->
     catch begin
         ok = prim_tty:load(),
-        #{stdin => prim_tty:isatty(stdin), stdout => prim_tty:isatty(stdout), term => os:getenv("TERM")}
+        #{
+            stdin => prim_tty:isatty(stdin),
+            stdout => prim_tty:isatty(stdout),
+            term => os:getenv("TERM")
+        }
     end.
 
 read_password_echoed() ->
     case io:get_line(standard_io, "") of
         eof ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"EOFError">>), <<"EOF when reading a line">>));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"EOFError">>), <<"EOF when reading a line">>
+                )
+            );
         Line ->
             strip_line_ending(unicode:characters_to_binary(Line))
     end.
@@ -290,7 +308,8 @@ getpass_getuser(Args) ->
 
 env_value(Name, Env, Default) ->
     case maps:find(Name, Env) of
-        {ok, Value} -> Value;
+        {ok, Value} ->
+            Value;
         error ->
             case os:getenv(binary_to_list(Name)) of
                 false -> Default;
@@ -375,7 +394,11 @@ sys_setrecursionlimit([Limit]) when is_integer(Limit), Limit > 0 ->
     erlang:put(pyrlang_sys_recursionlimit, Limit),
     none;
 sys_setrecursionlimit([Limit]) when is_integer(Limit) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"recursion limit must be positive">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ValueError">>), <<"recursion limit must be positive">>
+        )
+    );
 sys_setrecursionlimit(Args) ->
     erlang:error({arity_error, {setrecursionlimit, length(Args)}}).
 
@@ -533,7 +556,9 @@ io_text_encoding(Args) ->
     erlang:error({arity_error, {text_encoding, length(Args)}}).
 
 io_class(Name) ->
-    pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], io_class_attrs(Name)).
+    pyrlang_object:new_class(
+        Name, [maps:get(<<"object">>, pyrlang_builtins:env())], io_class_attrs(Name)
+    ).
 
 io_class_attrs(<<"BytesIO">>) ->
     (io_class_attrs_base())#{
@@ -582,14 +607,20 @@ io_memory_dunder_new(Args, _KwArgs) ->
     erlang:error({arity_error, {'io memory __new__', length(Args)}}).
 
 io_bytesio_init([Self], KwArgs) ->
-    io_bytesio_init([Self, maps:get(<<"initial_bytes">>, KwArgs, <<>>)], maps:without([<<"initial_bytes">>], KwArgs));
+    io_bytesio_init(
+        [Self, maps:get(<<"initial_bytes">>, KwArgs, <<>>)],
+        maps:without([<<"initial_bytes">>], KwArgs)
+    );
 io_bytesio_init([Self, InitialBytes], KwArgs) when map_size(KwArgs) =:= 0 ->
     io_memory_init(Self, io_bytes_value(InitialBytes));
 io_bytesio_init(Args, KwArgs) ->
     erlang:error({arity_error, {'io.BytesIO.__init__', length(Args), maps:size(KwArgs)}}).
 
 io_stringio_init([Self], KwArgs) ->
-    io_stringio_init([Self, maps:get(<<"initial_value">>, KwArgs, <<>>)], maps:without([<<"initial_value">>], KwArgs));
+    io_stringio_init(
+        [Self, maps:get(<<"initial_value">>, KwArgs, <<>>)],
+        maps:without([<<"initial_value">>], KwArgs)
+    );
 io_stringio_init([Self, InitialValue], KwArgs) when map_size(KwArgs) =:= 0 ->
     io_memory_init(Self, io_text_value(InitialValue));
 io_stringio_init(Args, KwArgs) ->
@@ -624,7 +655,11 @@ io_memory_write(Self, Data) ->
             true -> binary:part(Buffer, SuffixStart, Size - SuffixStart);
             false -> <<>>
         end,
-    ok = pyrlang_object:set_attr(Self, <<"__pyrlang_io_buffer">>, <<Prefix/binary, Padding/binary, Data/binary, Suffix/binary>>),
+    ok = pyrlang_object:set_attr(
+        Self,
+        <<"__pyrlang_io_buffer">>,
+        <<Prefix/binary, Padding/binary, Data/binary, Suffix/binary>>
+    ),
     ok = pyrlang_object:set_attr(Self, <<"__pyrlang_io_pos">>, Pos + DataSize),
     DataSize.
 
@@ -697,7 +732,8 @@ io_memory_getvalue(Self) ->
     io_memory_buffer(Self).
 
 io_memory_buffer(Self) ->
-    try pyrlang_object:get_attr(Self, <<"__pyrlang_io_buffer">>)
+    try
+        pyrlang_object:get_attr(Self, <<"__pyrlang_io_buffer">>)
     catch
         _:_ -> <<>>
     end.
@@ -782,7 +818,12 @@ opcode_none(Args) ->
     erlang:error({arity_error, {opcode_none, length(Args)}}).
 
 imp_missing_frozen(Name) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ImportError">>), <<"No frozen module named ", (normalize_name(Name))/binary>>)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ImportError">>),
+            <<"No frozen module named ", (normalize_name(Name))/binary>>
+        )
+    ).
 
 imp_source_hash(_Magic, SourceBytes) ->
     Hash = crypto:hash(sha256, normalize_name(SourceBytes)),
@@ -799,7 +840,9 @@ marshal_dumps(Args) ->
     erlang:error({arity_error, {marshal_dumps, length(Args)}}).
 
 marshal_loads([_Bytes]) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"bad marshal data">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"bad marshal data">>)
+    );
 marshal_loads(Args) ->
     erlang:error({arity_error, {marshal_loads, length(Args)}}).
 
@@ -819,7 +862,9 @@ marshal_dump(Args) ->
 marshal_load([File]) ->
     Read = pyrlang_object:get_attr(File, <<"read">>),
     _ = pyrlang_eval:call(Read, []),
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"bad marshal data">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"bad marshal data">>)
+    );
 marshal_load(Args) ->
     erlang:error({arity_error, {marshal_load, length(Args)}}).
 
@@ -857,7 +902,10 @@ struct_pack([Format | Values]) ->
         {Packed, []} ->
             Packed;
         {_Packed, Extra} ->
-            raise_struct_error(<<"pack expected fewer items than provided: ", (integer_to_binary(length(Extra)))/binary>>)
+            raise_struct_error(
+                <<"pack expected fewer items than provided: ",
+                    (integer_to_binary(length(Extra)))/binary>>
+            )
     end;
 struct_pack(Args) ->
     erlang:error({arity_error, {'_struct.pack', length(Args)}}).
@@ -876,7 +924,10 @@ struct_unpack([Format, Data]) ->
         Size ->
             list_to_tuple(struct_unpack_tokens(Tokens, Binary, []));
         Actual ->
-            raise_struct_error(<<"unpack requires a buffer of ", (integer_to_binary(Size))/binary, " bytes; got ", (integer_to_binary(Actual))/binary>>)
+            raise_struct_error(
+                <<"unpack requires a buffer of ", (integer_to_binary(Size))/binary, " bytes; got ",
+                    (integer_to_binary(Actual))/binary>>
+            )
     end;
 struct_unpack(Args) ->
     erlang:error({arity_error, {'_struct.unpack', length(Args)}}).
@@ -893,7 +944,10 @@ struct_unpack_from([Format, Data, Offset0]) when is_integer(Offset0) ->
             Chunk = binary:part(Binary, Offset, Size),
             list_to_tuple(struct_unpack_tokens(Tokens, Chunk, []));
         false ->
-            raise_struct_error(<<"unpack_from requires a buffer of at least ", (integer_to_binary(Offset + Size))/binary, " bytes">>)
+            raise_struct_error(
+                <<"unpack_from requires a buffer of at least ",
+                    (integer_to_binary(Offset + Size))/binary, " bytes">>
+            )
     end;
 struct_unpack_from(Args) ->
     erlang:error({arity_error, {'_struct.unpack_from', length(Args)}}).
@@ -910,7 +964,9 @@ struct_iter_unpack([Format, Data]) ->
                 0 ->
                     pyrlang_heap:list(struct_iter_unpack_chunks(Tokens, Binary, Size, []));
                 _ ->
-                    raise_struct_error(<<"iterative unpacking requires a buffer with a whole number of records">>)
+                    raise_struct_error(
+                        <<"iterative unpacking requires a buffer with a whole number of records">>
+                    )
             end
     end;
 struct_iter_unpack(Args) ->
@@ -924,14 +980,19 @@ struct_struct_new([Format], KwArgs) when map_size(KwArgs) =:= 0 ->
         <<"format">> => FormatBin,
         <<"size">> => Size,
         <<"pack">> => {py_native_varargs, fun(Values) -> struct_pack([FormatBin | Values]) end},
-        <<"pack_into">> => {py_native_varargs, fun([Buffer, Offset | Values]) -> struct_pack_into([FormatBin, Buffer, Offset | Values]) end},
+        <<"pack_into">> =>
+            {py_native_varargs, fun([Buffer, Offset | Values]) ->
+                struct_pack_into([FormatBin, Buffer, Offset | Values])
+            end},
         <<"unpack">> => {py_native_varargs, fun([Data]) -> struct_unpack([FormatBin, Data]) end},
-        <<"unpack_from">> => {py_native_varargs, fun
-            ([Data]) -> struct_unpack_from([FormatBin, Data]);
-            ([Data, Offset]) -> struct_unpack_from([FormatBin, Data, Offset]);
-            (Args) -> erlang:error({arity_error, {'_struct.Struct.unpack_from', length(Args)}})
-        end},
-        <<"iter_unpack">> => {py_native_varargs, fun([Data]) -> struct_iter_unpack([FormatBin, Data]) end}
+        <<"unpack_from">> =>
+            {py_native_varargs, fun
+                ([Data]) -> struct_unpack_from([FormatBin, Data]);
+                ([Data, Offset]) -> struct_unpack_from([FormatBin, Data, Offset]);
+                (Args) -> erlang:error({arity_error, {'_struct.Struct.unpack_from', length(Args)}})
+            end},
+        <<"iter_unpack">> =>
+            {py_native_varargs, fun([Data]) -> struct_iter_unpack([FormatBin, Data]) end}
     });
 struct_struct_new(_Args, KwArgs) when map_size(KwArgs) =/= 0 ->
     erlang:error({type_error, {unexpected_keyword_argument, maps:keys(KwArgs)}});
@@ -952,7 +1013,9 @@ struct_format_endian(Rest) -> {little, Rest}.
 
 struct_parse_format_chars([], _Endian, Acc) ->
     lists:reverse(Acc);
-struct_parse_format_chars([Char | Rest], Endian, Acc) when Char =:= $\s; Char =:= $\n; Char =:= $\t; Char =:= $\r ->
+struct_parse_format_chars([Char | Rest], Endian, Acc) when
+    Char =:= $\s; Char =:= $\n; Char =:= $\t; Char =:= $\r
+->
     struct_parse_format_chars(Rest, Endian, Acc);
 struct_parse_format_chars(Chars, Endian, Acc) ->
     {Count, [Code | Rest]} = struct_take_count(Chars),
@@ -994,8 +1057,7 @@ struct_token($n, Count, Endian) -> {int, Count, 8, signed, Endian};
 struct_token($N, Count, Endian) -> {int, Count, 8, unsigned, Endian};
 struct_token($f, Count, Endian) -> {float, Count, 4, Endian};
 struct_token($d, Count, Endian) -> {float, Count, 8, Endian};
-struct_token(Code, _Count, _Endian) ->
-    raise_struct_error(<<"bad char in struct format: ", Code>>).
+struct_token(Code, _Count, _Endian) -> raise_struct_error(<<"bad char in struct format: ", Code>>).
 
 struct_calcsize_tokens(Tokens) ->
     lists:sum([struct_token_size(Token) || Token <- Tokens]).
@@ -1034,7 +1096,9 @@ struct_pack_token({pascal, Count}, [Value | Rest]) ->
 struct_pack_token({pascal, _Count}, []) ->
     raise_struct_error(<<"pack expected an item for 'p' format">>);
 struct_pack_token({int, Count, Size, Signed, Endian}, Values) ->
-    struct_pack_repeat(Count, Values, fun(Value) -> struct_pack_int(Endian, Signed, Size, Value) end, []);
+    struct_pack_repeat(
+        Count, Values, fun(Value) -> struct_pack_int(Endian, Signed, Size, Value) end, []
+    );
 struct_pack_token({float, Count, Size, Endian}, Values) ->
     struct_pack_repeat(Count, Values, fun(Value) -> struct_pack_float(Endian, Size, Value) end, []).
 
@@ -1047,28 +1111,45 @@ struct_pack_repeat(Count, [Value | Rest], PackFun, Acc) ->
 
 struct_pack_char(Value) ->
     case struct_binary(Value) of
-        <<Byte>> -> <<Byte>>;
-        Other -> raise_struct_error(<<"char format requires a bytes object of length 1; got ", (integer_to_binary(byte_size(Other)))/binary>>)
+        <<Byte>> ->
+            <<Byte>>;
+        Other ->
+            raise_struct_error(
+                <<"char format requires a bytes object of length 1; got ",
+                    (integer_to_binary(byte_size(Other)))/binary>>
+            )
     end.
 
 struct_pack_int(little, signed, 1, Value) when is_integer(Value) -> <<Value:8/signed-integer>>;
 struct_pack_int(little, unsigned, 1, Value) when is_integer(Value) -> <<Value:8/unsigned-integer>>;
 struct_pack_int(big, signed, 1, Value) when is_integer(Value) -> <<Value:8/signed-integer>>;
 struct_pack_int(big, unsigned, 1, Value) when is_integer(Value) -> <<Value:8/unsigned-integer>>;
-struct_pack_int(little, signed, 2, Value) when is_integer(Value) -> <<Value:16/little-signed-integer>>;
-struct_pack_int(little, unsigned, 2, Value) when is_integer(Value) -> <<Value:16/little-unsigned-integer>>;
+struct_pack_int(little, signed, 2, Value) when is_integer(Value) ->
+    <<Value:16/little-signed-integer>>;
+struct_pack_int(little, unsigned, 2, Value) when is_integer(Value) ->
+    <<Value:16/little-unsigned-integer>>;
 struct_pack_int(big, signed, 2, Value) when is_integer(Value) -> <<Value:16/big-signed-integer>>;
-struct_pack_int(big, unsigned, 2, Value) when is_integer(Value) -> <<Value:16/big-unsigned-integer>>;
-struct_pack_int(little, signed, 4, Value) when is_integer(Value) -> <<Value:32/little-signed-integer>>;
-struct_pack_int(little, unsigned, 4, Value) when is_integer(Value) -> <<Value:32/little-unsigned-integer>>;
+struct_pack_int(big, unsigned, 2, Value) when is_integer(Value) ->
+    <<Value:16/big-unsigned-integer>>;
+struct_pack_int(little, signed, 4, Value) when is_integer(Value) ->
+    <<Value:32/little-signed-integer>>;
+struct_pack_int(little, unsigned, 4, Value) when is_integer(Value) ->
+    <<Value:32/little-unsigned-integer>>;
 struct_pack_int(big, signed, 4, Value) when is_integer(Value) -> <<Value:32/big-signed-integer>>;
-struct_pack_int(big, unsigned, 4, Value) when is_integer(Value) -> <<Value:32/big-unsigned-integer>>;
-struct_pack_int(little, signed, 8, Value) when is_integer(Value) -> <<Value:64/little-signed-integer>>;
-struct_pack_int(little, unsigned, 8, Value) when is_integer(Value) -> <<Value:64/little-unsigned-integer>>;
+struct_pack_int(big, unsigned, 4, Value) when is_integer(Value) ->
+    <<Value:32/big-unsigned-integer>>;
+struct_pack_int(little, signed, 8, Value) when is_integer(Value) ->
+    <<Value:64/little-signed-integer>>;
+struct_pack_int(little, unsigned, 8, Value) when is_integer(Value) ->
+    <<Value:64/little-unsigned-integer>>;
 struct_pack_int(big, signed, 8, Value) when is_integer(Value) -> <<Value:64/big-signed-integer>>;
-struct_pack_int(big, unsigned, 8, Value) when is_integer(Value) -> <<Value:64/big-unsigned-integer>>;
+struct_pack_int(big, unsigned, 8, Value) when is_integer(Value) ->
+    <<Value:64/big-unsigned-integer>>;
 struct_pack_int(_Endian, _Signed, _Size, Value) ->
-    raise_struct_error(<<"required argument is not an integer: ", (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>).
+    raise_struct_error(
+        <<"required argument is not an integer: ",
+            (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>
+    ).
 
 struct_pack_float(little, 4, Value) when is_integer(Value) -> <<(Value * 1.0):32/little-float>>;
 struct_pack_float(little, 4, Value) when is_float(Value) -> <<Value:32/little-float>>;
@@ -1079,7 +1160,10 @@ struct_pack_float(little, 8, Value) when is_float(Value) -> <<Value:64/little-fl
 struct_pack_float(big, 8, Value) when is_integer(Value) -> <<(Value * 1.0):64/big-float>>;
 struct_pack_float(big, 8, Value) when is_float(Value) -> <<Value:64/big-float>>;
 struct_pack_float(_Endian, _Size, Value) ->
-    raise_struct_error(<<"required argument is not a float: ", (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>).
+    raise_struct_error(
+        <<"required argument is not a float: ",
+            (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>
+    ).
 
 struct_unpack_tokens([], <<>>, Acc) ->
     lists:reverse(Acc);
@@ -1106,7 +1190,9 @@ struct_unpack_token({pascal, Count}, Binary) ->
         end,
     {[Value], Rest};
 struct_unpack_token({int, Count, Size, Signed, Endian}, Binary) ->
-    struct_unpack_repeat(Count, Binary, fun(Bin) -> struct_unpack_int(Endian, Signed, Size, Bin) end, []);
+    struct_unpack_repeat(
+        Count, Binary, fun(Bin) -> struct_unpack_int(Endian, Signed, Size, Bin) end, []
+    );
 struct_unpack_token({float, Count, Size, Endian}, Binary) ->
     struct_unpack_repeat(Count, Binary, fun(Bin) -> struct_unpack_float(Endian, Size, Bin) end, []).
 
@@ -1119,22 +1205,38 @@ struct_unpack_repeat(Count, Binary0, UnpackFun, Acc) ->
 struct_unpack_char(<<Byte, Rest/binary>>) ->
     {<<Byte>>, Rest}.
 
-struct_unpack_int(little, signed, 1, <<Value:8/signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, unsigned, 1, <<Value:8/unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, signed, 1, <<Value:8/signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, unsigned, 1, <<Value:8/unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, signed, 2, <<Value:16/little-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, unsigned, 2, <<Value:16/little-unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, signed, 2, <<Value:16/big-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, unsigned, 2, <<Value:16/big-unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, signed, 4, <<Value:32/little-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, unsigned, 4, <<Value:32/little-unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, signed, 4, <<Value:32/big-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, unsigned, 4, <<Value:32/big-unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, signed, 8, <<Value:64/little-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(little, unsigned, 8, <<Value:64/little-unsigned-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, signed, 8, <<Value:64/big-signed-integer, Rest/binary>>) -> {Value, Rest};
-struct_unpack_int(big, unsigned, 8, <<Value:64/big-unsigned-integer, Rest/binary>>) -> {Value, Rest}.
+struct_unpack_int(little, signed, 1, <<Value:8/signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, unsigned, 1, <<Value:8/unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, signed, 1, <<Value:8/signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, unsigned, 1, <<Value:8/unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, signed, 2, <<Value:16/little-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, unsigned, 2, <<Value:16/little-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, signed, 2, <<Value:16/big-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, unsigned, 2, <<Value:16/big-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, signed, 4, <<Value:32/little-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, unsigned, 4, <<Value:32/little-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, signed, 4, <<Value:32/big-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, unsigned, 4, <<Value:32/big-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, signed, 8, <<Value:64/little-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(little, unsigned, 8, <<Value:64/little-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, signed, 8, <<Value:64/big-signed-integer, Rest/binary>>) ->
+    {Value, Rest};
+struct_unpack_int(big, unsigned, 8, <<Value:64/big-unsigned-integer, Rest/binary>>) ->
+    {Value, Rest}.
 
 struct_unpack_float(little, 4, <<Value:32/little-float, Rest/binary>>) -> {Value, Rest};
 struct_unpack_float(big, 4, <<Value:32/big-float, Rest/binary>>) -> {Value, Rest};
@@ -1162,7 +1264,10 @@ struct_binary(Value) ->
 struct_byte_value(Value) when is_integer(Value), Value >= 0, Value =< 255 ->
     Value;
 struct_byte_value(Value) ->
-    raise_struct_error(<<"bytes-like object item is outside 0..255: ", (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>).
+    raise_struct_error(
+        <<"bytes-like object item is outside 0..255: ",
+            (unicode:characters_to_binary(io_lib:format("~p", [Value])))/binary>>
+    ).
 
 normalize_buffer_offset(Offset, Size) when Offset < 0 ->
     Normalized = Size + Offset,
@@ -1174,7 +1279,9 @@ normalize_buffer_offset(Offset, _Size) ->
     Offset.
 
 raise_struct_error(Message) when is_binary(Message) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StructError">>), Message)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"StructError">>), Message)
+    ).
 
 codecs_lookup(Encoding) ->
     Canonical = codecs_canonical_name(Encoding),
@@ -1347,19 +1454,34 @@ strip_utf8_bom(Binary) ->
 codecs_canonical_name(Name0) ->
     Name = normalize_encoding_text(Name0),
     case Name of
-        <<"utf8">> -> <<"utf-8">>;
-        <<"utf-8">> -> <<"utf-8">>;
-        <<"utf-8-sig">> -> <<"utf-8-sig">>;
-        <<"utf-8sig">> -> <<"utf-8-sig">>;
-        <<"ascii">> -> <<"ascii">>;
-        <<"us-ascii">> -> <<"ascii">>;
-        <<"latin1">> -> <<"latin-1">>;
-        <<"latin-1">> -> <<"latin-1">>;
-        <<"iso-8859-1">> -> <<"latin-1">>;
-        <<"iso8859-1">> -> <<"latin-1">>;
-        <<"iso88591">> -> <<"latin-1">>;
+        <<"utf8">> ->
+            <<"utf-8">>;
+        <<"utf-8">> ->
+            <<"utf-8">>;
+        <<"utf-8-sig">> ->
+            <<"utf-8-sig">>;
+        <<"utf-8sig">> ->
+            <<"utf-8-sig">>;
+        <<"ascii">> ->
+            <<"ascii">>;
+        <<"us-ascii">> ->
+            <<"ascii">>;
+        <<"latin1">> ->
+            <<"latin-1">>;
+        <<"latin-1">> ->
+            <<"latin-1">>;
+        <<"iso-8859-1">> ->
+            <<"latin-1">>;
+        <<"iso8859-1">> ->
+            <<"latin-1">>;
+        <<"iso88591">> ->
+            <<"latin-1">>;
         _ ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"LookupError">>), <<"unknown encoding: ", Name/binary>>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"LookupError">>), <<"unknown encoding: ", Name/binary>>
+                )
+            )
     end.
 
 normalize_encoding_text(Name0) ->
@@ -1407,7 +1529,12 @@ run_as_main(Name0, Args0) ->
                     },
                     pyrlang_eval:eval_module(Ast, Env0);
                 {error, Reason} ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ImportError">>), {parse_error, TargetName, Reason}))
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(
+                            pyrlang_exception:type(<<"ImportError">>),
+                            {parse_error, TargetName, Reason}
+                        )
+                    )
             end;
         error ->
             raise_module_not_found(TargetName)
@@ -1423,11 +1550,18 @@ get_attr(ModuleRef, Attr0) ->
         _ ->
             Env = maps:get(env, pyrlang_heap:data(ModuleRef)),
             case maps:find(Attr, Env) of
-                {ok, Value} -> Value;
+                {ok, Value} ->
+                    Value;
                 error ->
                     case maps:find(<<"__getattr__">>, Env) of
-                        {ok, Getter} -> pyrlang_eval:call(Getter, [Attr]);
-                        error -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"AttributeError">>), Attr))
+                        {ok, Getter} ->
+                            pyrlang_eval:call(Getter, [Attr]);
+                        error ->
+                            pyrlang_exception:raise(
+                                pyrlang_exception:make(
+                                    pyrlang_exception:type(<<"AttributeError">>), Attr
+                                )
+                            )
                     end
             end
     end.
@@ -1495,28 +1629,41 @@ load_file_uncached(Name) ->
                     PrevLoadingModule = erlang:get(pyrlang_current_loading_module),
                     erlang:put(pyrlang_current_loading_module, Placeholder),
                     {Last, Env} =
-                        try pyrlang_eval:eval_module(Ast, Env0)
+                        try
+                            pyrlang_eval:eval_module(Ast, Env0)
                         catch
                             Class:Reason:Stack ->
                                 remove_cache(Name),
                                 case erlang:get(pyrlang_failed_loading_stack) of
-                                    undefined -> erlang:put(pyrlang_failed_loading_stack, LoadingStack);
-                                    _ExistingFailedStack -> ok
+                                    undefined ->
+                                        erlang:put(pyrlang_failed_loading_stack, LoadingStack);
+                                    _ExistingFailedStack ->
+                                        ok
                                 end,
                                 erlang:raise(Class, Reason, Stack)
                         after
-                            restore_process_value(pyrlang_current_loading_module, PrevLoadingModule),
+                            restore_process_value(
+                                pyrlang_current_loading_module, PrevLoadingModule
+                            ),
                             erlang:put(pyrlang_loading_stack, PrevLoadingStack)
                         end,
                     DataAfterLoad = pyrlang_heap:data(Placeholder),
                     AttachedEnv = maps:get(env, DataAfterLoad, #{}),
-                    FinalEnv = pyrlang_eval:bind_module_globals(patch_loaded_module_env(Name, maps:merge(Env, AttachedEnv))),
-                    ok = pyrlang_heap:set_data(Placeholder, DataAfterLoad#{env := FinalEnv, last := Last}),
+                    FinalEnv = pyrlang_eval:bind_module_globals(
+                        patch_loaded_module_env(Name, maps:merge(Env, AttachedEnv))
+                    ),
+                    ok = pyrlang_heap:set_data(Placeholder, DataAfterLoad#{
+                        env := FinalEnv, last := Last
+                    }),
                     attach_to_parent(Name, Placeholder),
                     trace_module_load(done, Name, Path),
                     Placeholder;
                 {error, Reason} ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ImportError">>), {parse_error, Name, Reason}))
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(
+                            pyrlang_exception:type(<<"ImportError">>), {parse_error, Name, Reason}
+                        )
+                    )
             end;
         error ->
             trace_module_load(miss, Name, builtin),
@@ -1577,11 +1724,12 @@ patch_loaded_module_env(<<"http.client">>, Env) ->
         Http = load(<<"http">>),
         Status = get_attr(Http, <<"HTTPStatus">>),
         Members = pyrlang_object:get_attr(Status, <<"__members__">>),
-        ResponseItems = [{Code, Phrase} || {_Name, Code, Phrase} <- http_status_specs()] ++
-            [
-                {StatusValue, pyrlang_object:get_attr(StatusValue, <<"phrase">>)}
-                || {_Name, StatusValue} <- pyrlang_heap:dict_items(Members)
-            ],
+        ResponseItems =
+            [{Code, Phrase} || {_Name, Code, Phrase} <- http_status_specs()] ++
+                [
+                    {StatusValue, pyrlang_object:get_attr(StatusValue, <<"phrase">>)}
+                 || {_Name, StatusValue} <- pyrlang_heap:dict_items(Members)
+                ],
         Responses = pyrlang_heap:dict(ResponseItems),
         (maps:merge(maps:from_list(pyrlang_heap:dict_items(Members)), Env))#{
             <<"responses">> => Responses
@@ -1692,7 +1840,8 @@ inspect_isclass_call(Args, _KwArgs) ->
 inspect_ismodule_call([Object], _KwArgs) ->
     case Object of
         {py_ref, _} = Ref ->
-            try pyrlang_heap:type(Ref) =:= module
+            try
+                pyrlang_heap:type(Ref) =:= module
             catch
                 _:_ -> false
             end;
@@ -1737,13 +1886,20 @@ inspect_isroutine_call(Args, _KwArgs) ->
     erlang:error({arity_error, {inspect_isroutine, length(Args)}}).
 
 inspect_isclass_routine(Object) ->
-    case {inspect_isfunction_call([Object], #{}), inspect_ismethod_call([Object], #{}), inspect_isbuiltin_call([Object], #{})} of
+    case
+        {
+            inspect_isfunction_call([Object], #{}),
+            inspect_ismethod_call([Object], #{}),
+            inspect_isbuiltin_call([Object], #{})
+        }
+    of
         {false, false, false} -> false;
         _ -> true
     end.
 
 is_class_like({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref) =:= class
+    try
+        pyrlang_heap:type(Ref) =:= class
     catch
         _:_ -> false
     end;
@@ -1864,30 +2020,63 @@ inspect_signature_instance(Items) ->
     trace_inspect({signature_instance, length(Items)}, Items),
     native_instance(<<"Signature">>, #{
         <<"parameters">> => pyrlang_heap:dict(Items),
-        <<"bind">> => {py_native_call, fun(Args, KwArgs) -> inspect_signature_bind(Items, Args, KwArgs) end}
+        <<"bind">> =>
+            {py_native_call, fun(Args, KwArgs) -> inspect_signature_bind(Items, Args, KwArgs) end}
     }).
 
 inspect_signature_bind(Items, Args, KwArgs) ->
     Constants = inspect_parameter_constants(),
     Infos = [inspect_parameter_info(Parameter, Constants) || {_Name, Parameter} <- Items],
-    PositionalOrKeywordInfos = [Info || Info <- Infos, maps:get(kind, Info) =:= maps:get(positional_or_keyword, Constants)],
-    RequiredPositional = length([Info || Info <- PositionalOrKeywordInfos, inspect_parameter_required(Info), not maps:is_key(maps:get(name, Info), KwArgs)]),
-    HasVarArgs = lists:any(fun(Info) -> maps:get(kind, Info) =:= maps:get(var_positional, Constants) end, Infos),
+    PositionalOrKeywordInfos = [
+        Info
+     || Info <- Infos, maps:get(kind, Info) =:= maps:get(positional_or_keyword, Constants)
+    ],
+    RequiredPositional = length([
+        Info
+     || Info <- PositionalOrKeywordInfos,
+        inspect_parameter_required(Info),
+        not maps:is_key(maps:get(name, Info), KwArgs)
+    ]),
+    HasVarArgs = lists:any(
+        fun(Info) -> maps:get(kind, Info) =:= maps:get(var_positional, Constants) end, Infos
+    ),
     MaxPositional = length(PositionalOrKeywordInfos),
-    MissingKwOnly = [maps:get(name, Info) || Info <- Infos, maps:get(kind, Info) =:= maps:get(keyword_only, Constants), inspect_parameter_required(Info), not maps:is_key(maps:get(name, Info), KwArgs)],
-    HasKwArgs = lists:any(fun(Info) -> maps:get(kind, Info) =:= maps:get(var_keyword, Constants) end, Infos),
+    MissingKwOnly = [
+        maps:get(name, Info)
+     || Info <- Infos,
+        maps:get(kind, Info) =:= maps:get(keyword_only, Constants),
+        inspect_parameter_required(Info),
+        not maps:is_key(maps:get(name, Info), KwArgs)
+    ],
+    HasKwArgs = lists:any(
+        fun(Info) -> maps:get(kind, Info) =:= maps:get(var_keyword, Constants) end, Infos
+    ),
     KnownNames = [Name || {Name, _Parameter} <- Items],
     UnknownKw = [Key || Key <- maps:keys(KwArgs), not lists:member(Key, KnownNames)],
-    case {length(Args) < RequiredPositional, (not HasVarArgs) andalso length(Args) > MaxPositional, MissingKwOnly, (not HasKwArgs) andalso UnknownKw =/= []} of
-        {true, _, _, _} -> signature_bind_type_error(<<"missing a required argument">>);
-        {_, true, _, _} -> signature_bind_type_error(<<"too many positional arguments">>);
-        {_, _, [_ | _], _} -> signature_bind_type_error(<<"missing a required keyword-only argument">>);
-        {_, _, _, true} -> signature_bind_type_error(<<"got an unexpected keyword argument">>);
-        _ -> native_instance(<<"BoundArguments">>, #{<<"arguments">> => pyrlang_heap:dict([])})
+    case
+        {
+            length(Args) < RequiredPositional,
+            (not HasVarArgs) andalso length(Args) > MaxPositional,
+            MissingKwOnly,
+            (not HasKwArgs) andalso UnknownKw =/= []
+        }
+    of
+        {true, _, _, _} ->
+            signature_bind_type_error(<<"missing a required argument">>);
+        {_, true, _, _} ->
+            signature_bind_type_error(<<"too many positional arguments">>);
+        {_, _, [_ | _], _} ->
+            signature_bind_type_error(<<"missing a required keyword-only argument">>);
+        {_, _, _, true} ->
+            signature_bind_type_error(<<"got an unexpected keyword argument">>);
+        _ ->
+            native_instance(<<"BoundArguments">>, #{<<"arguments">> => pyrlang_heap:dict([])})
     end.
 
 signature_bind_type_error(Message) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), Message)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), Message)
+    ).
 
 inspect_parameter_info(Parameter, Constants) ->
     #{
@@ -1919,13 +2108,25 @@ inspect_parameter_from_param({param, Name, Default}, Section, Constants) ->
         end,
     {Name, inspect_parameter(Name, Kind, inspect_default(Default, Constants), Constants)};
 inspect_parameter_from_param({vararg, Name, _Annotation}, _Section, Constants) ->
-    {Name, inspect_parameter(Name, maps:get(var_positional, Constants), maps:get(empty, Constants), Constants)};
+    {Name,
+        inspect_parameter(
+            Name, maps:get(var_positional, Constants), maps:get(empty, Constants), Constants
+        )};
 inspect_parameter_from_param({vararg, Name}, _Section, Constants) ->
-    {Name, inspect_parameter(Name, maps:get(var_positional, Constants), maps:get(empty, Constants), Constants)};
+    {Name,
+        inspect_parameter(
+            Name, maps:get(var_positional, Constants), maps:get(empty, Constants), Constants
+        )};
 inspect_parameter_from_param({kwarg_rest, Name, _Annotation}, _Section, Constants) ->
-    {Name, inspect_parameter(Name, maps:get(var_keyword, Constants), maps:get(empty, Constants), Constants)};
+    {Name,
+        inspect_parameter(
+            Name, maps:get(var_keyword, Constants), maps:get(empty, Constants), Constants
+        )};
 inspect_parameter_from_param({kwarg_rest, Name}, _Section, Constants) ->
-    {Name, inspect_parameter(Name, maps:get(var_keyword, Constants), maps:get(empty, Constants), Constants)}.
+    {Name,
+        inspect_parameter(
+            Name, maps:get(var_keyword, Constants), maps:get(empty, Constants), Constants
+        )}.
 
 inspect_parameter(Name, Kind, Default, Constants) ->
     native_instance(<<"Parameter">>, #{
@@ -1950,7 +2151,9 @@ inspect_parameter_constants() ->
             Inspect = load(<<"inspect">>),
             Parameter = get_attr(Inspect, <<"Parameter">>),
             Constants = #{
-                positional_or_keyword => pyrlang_object:get_attr(Parameter, <<"POSITIONAL_OR_KEYWORD">>),
+                positional_or_keyword => pyrlang_object:get_attr(
+                    Parameter, <<"POSITIONAL_OR_KEYWORD">>
+                ),
                 keyword_only => pyrlang_object:get_attr(Parameter, <<"KEYWORD_ONLY">>),
                 var_positional => pyrlang_object:get_attr(Parameter, <<"VAR_POSITIONAL">>),
                 var_keyword => pyrlang_object:get_attr(Parameter, <<"VAR_KEYWORD">>),
@@ -1982,8 +2185,10 @@ trace_inspect_value(List) when is_list(List) ->
 trace_inspect_value(Map) when is_map(Map) ->
     {map, maps:keys(Map)};
 trace_inspect_value({py_ref, _} = Ref) ->
-    try {py_ref, pyrlang_heap:type(Ref)}
-    catch _:_ -> py_ref
+    try
+        {py_ref, pyrlang_heap:type(Ref)}
+    catch
+        _:_ -> py_ref
     end;
 trace_inspect_value(Value) ->
     Value.
@@ -2034,57 +2239,58 @@ builtin_module(<<"erlang">>) ->
         <<"whereis">> => fun builtin_whereis/1
     }};
 builtin_module(<<"os">>) ->
-    {ok, maps:merge(os_open_flag_env(), #{
-        <<"__name__">> => <<"os">>,
-        <<"__file__">> => builtin,
-        <<"__package__">> => <<"">>,
-        <<"__path__">> => none,
-        <<"environ">> => pyrlang_heap:dict(os_environ()),
-        <<"path">> => load(<<"posixpath">>),
-        <<"PathLike">> => os_pathlike_class(),
-        <<"fspath">> => fun posix_fspath/1,
-        <<"fsencode">> => fun posix_fspath/1,
-        <<"fsdecode">> => fun posix_fspath/1,
-        <<"DirEntry">> => dir_entry_type(),
-        <<"stat_result">> => stat_result_type(),
-        <<"terminal_size">> => terminal_size_type(),
-        <<"access">> => {py_native_call, fun posix_access_call/2},
-        <<"get_terminal_size">> => {py_native_varargs, fun os_get_terminal_size/1},
-        <<"getcwd">> => {py_native_varargs, fun os_getcwd/1},
-        <<"_get_exports_list">> => {py_native_varargs, fun os_get_exports_list/1},
-        <<"listdir">> => {py_native_varargs, fun posix_listdir/1},
-        <<"mkdir">> => {py_native_varargs, fun posix_mkdir/1},
-        <<"makedirs">> => {py_native_call, fun posix_makedirs_call/2},
-        <<"walk">> => {py_native_call, fun posix_walk_call/2},
-        <<"rmdir">> => {py_native_call, fun posix_rmdir_call/2},
-        <<"open">> => {py_native_call, fun posix_open_call/2},
-        <<"close">> => {py_native_varargs, fun posix_close/1},
-        <<"fstat">> => {py_native_call, fun posix_fstat_call/2},
-        <<"chmod">> => {py_native_call, fun posix_chmod_call/2},
-        <<"umask">> => {py_native_varargs, fun posix_umask/1},
-        <<"urandom">> => fun os_urandom/1,
-        <<"replace">> => fun posix_replace/2,
-        <<"rename">> => fun posix_replace/2,
-        <<"stat">> => {py_native_call, fun posix_stat_call/2},
-        <<"lstat">> => {py_native_call, fun posix_stat_call/2},
-        <<"scandir">> => {py_native_call, fun posix_scandir_call/2},
-        <<"unlink">> => {py_native_call, fun posix_unlink_call/2},
-        <<"remove">> => {py_native_call, fun posix_unlink_call/2},
-        <<"supports_dir_fd">> => pyrlang_heap:set([]),
-        <<"supports_fd">> => pyrlang_heap:set([]),
-        <<"supports_follow_symlinks">> => pyrlang_heap:set([]),
-        <<"_walk_symlinks_as_files">> => false,
-        <<"sep">> => <<"/">>,
-        <<"altsep">> => none,
-        <<"extsep">> => <<".">>,
-        <<"pathsep">> => <<":">>,
-        <<"linesep">> => <<"\n">>,
-        <<"defpath">> => <<"/bin:/usr/bin">>,
-        <<"devnull">> => <<"/dev/null">>,
-        <<"curdir">> => <<".">>,
-        <<"pardir">> => <<"..">>,
-        <<"name">> => <<"posix">>
-    })};
+    {ok,
+        maps:merge(os_open_flag_env(), #{
+            <<"__name__">> => <<"os">>,
+            <<"__file__">> => builtin,
+            <<"__package__">> => <<"">>,
+            <<"__path__">> => none,
+            <<"environ">> => pyrlang_heap:dict(os_environ()),
+            <<"path">> => load(<<"posixpath">>),
+            <<"PathLike">> => os_pathlike_class(),
+            <<"fspath">> => fun posix_fspath/1,
+            <<"fsencode">> => fun posix_fspath/1,
+            <<"fsdecode">> => fun posix_fspath/1,
+            <<"DirEntry">> => dir_entry_type(),
+            <<"stat_result">> => stat_result_type(),
+            <<"terminal_size">> => terminal_size_type(),
+            <<"access">> => {py_native_call, fun posix_access_call/2},
+            <<"get_terminal_size">> => {py_native_varargs, fun os_get_terminal_size/1},
+            <<"getcwd">> => {py_native_varargs, fun os_getcwd/1},
+            <<"_get_exports_list">> => {py_native_varargs, fun os_get_exports_list/1},
+            <<"listdir">> => {py_native_varargs, fun posix_listdir/1},
+            <<"mkdir">> => {py_native_varargs, fun posix_mkdir/1},
+            <<"makedirs">> => {py_native_call, fun posix_makedirs_call/2},
+            <<"walk">> => {py_native_call, fun posix_walk_call/2},
+            <<"rmdir">> => {py_native_call, fun posix_rmdir_call/2},
+            <<"open">> => {py_native_call, fun posix_open_call/2},
+            <<"close">> => {py_native_varargs, fun posix_close/1},
+            <<"fstat">> => {py_native_call, fun posix_fstat_call/2},
+            <<"chmod">> => {py_native_call, fun posix_chmod_call/2},
+            <<"umask">> => {py_native_varargs, fun posix_umask/1},
+            <<"urandom">> => fun os_urandom/1,
+            <<"replace">> => fun posix_replace/2,
+            <<"rename">> => fun posix_replace/2,
+            <<"stat">> => {py_native_call, fun posix_stat_call/2},
+            <<"lstat">> => {py_native_call, fun posix_stat_call/2},
+            <<"scandir">> => {py_native_call, fun posix_scandir_call/2},
+            <<"unlink">> => {py_native_call, fun posix_unlink_call/2},
+            <<"remove">> => {py_native_call, fun posix_unlink_call/2},
+            <<"supports_dir_fd">> => pyrlang_heap:set([]),
+            <<"supports_fd">> => pyrlang_heap:set([]),
+            <<"supports_follow_symlinks">> => pyrlang_heap:set([]),
+            <<"_walk_symlinks_as_files">> => false,
+            <<"sep">> => <<"/">>,
+            <<"altsep">> => none,
+            <<"extsep">> => <<".">>,
+            <<"pathsep">> => <<":">>,
+            <<"linesep">> => <<"\n">>,
+            <<"defpath">> => <<"/bin:/usr/bin">>,
+            <<"devnull">> => <<"/dev/null">>,
+            <<"curdir">> => <<".">>,
+            <<"pardir">> => <<"..">>,
+            <<"name">> => <<"posix">>
+        })};
 builtin_module(<<"_sysconfigdata__darwin_">>) ->
     {ok, #{
         <<"__name__">> => <<"_sysconfigdata__darwin_">>,
@@ -2206,7 +2412,8 @@ builtin_module(<<"_string">>) ->
         <<"__package__">> => <<"">>,
         <<"__path__">> => none,
         <<"formatter_parser">> => {py_native_varargs, fun string_formatter_parser/1},
-        <<"formatter_field_name_split">> => {py_native_varargs, fun string_formatter_field_name_split/1}
+        <<"formatter_field_name_split">> =>
+            {py_native_varargs, fun string_formatter_field_name_split/1}
     }};
 builtin_module(<<"_codecs">>) ->
     {ok, #{
@@ -2416,7 +2623,10 @@ builtin_module(<<"functools">>) ->
         <<"__file__">> => builtin,
         <<"__package__">> => <<"">>,
         <<"__path__">> => none,
-        <<"__all__">> => {<<"update_wrapper">>, <<"wraps">>, <<"WRAPPER_ASSIGNMENTS">>, <<"WRAPPER_UPDATES">>, <<"total_ordering">>, <<"cache">>, <<"lru_cache">>, <<"reduce">>, <<"partial">>, <<"partialmethod">>, <<"cached_property">>, <<"singledispatch">>},
+        <<"__all__">> =>
+            {<<"update_wrapper">>, <<"wraps">>, <<"WRAPPER_ASSIGNMENTS">>, <<"WRAPPER_UPDATES">>,
+                <<"total_ordering">>, <<"cache">>, <<"lru_cache">>, <<"reduce">>, <<"partial">>,
+                <<"partialmethod">>, <<"cached_property">>, <<"singledispatch">>},
         <<"WRAPPER_ASSIGNMENTS">> => functools_wrapper_assignments(),
         <<"WRAPPER_UPDATES">> => {<<"__dict__">>},
         <<"cache">> => fun functools_cache/1,
@@ -2589,12 +2799,18 @@ builtin_module(<<"hashlib">>) ->
         <<"__file__">> => builtin,
         <<"__package__">> => <<"">>,
         <<"__path__">> => none,
-        <<"sha1">> => {py_native_call, fun(Args, KwArgs) -> hash_new(sha, Args, KwArgs) end, no_bind},
-        <<"sha224">> => {py_native_call, fun(Args, KwArgs) -> hash_new(sha224, Args, KwArgs) end, no_bind},
-        <<"sha256">> => {py_native_call, fun(Args, KwArgs) -> hash_new(sha256, Args, KwArgs) end, no_bind},
-        <<"sha384">> => {py_native_call, fun(Args, KwArgs) -> hash_new(sha384, Args, KwArgs) end, no_bind},
-        <<"sha512">> => {py_native_call, fun(Args, KwArgs) -> hash_new(sha512, Args, KwArgs) end, no_bind},
-        <<"md5">> => {py_native_call, fun(Args, KwArgs) -> hash_new(md5, Args, KwArgs) end, no_bind},
+        <<"sha1">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(sha, Args, KwArgs) end, no_bind},
+        <<"sha224">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(sha224, Args, KwArgs) end, no_bind},
+        <<"sha256">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(sha256, Args, KwArgs) end, no_bind},
+        <<"sha384">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(sha384, Args, KwArgs) end, no_bind},
+        <<"sha512">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(sha512, Args, KwArgs) end, no_bind},
+        <<"md5">> =>
+            {py_native_call, fun(Args, KwArgs) -> hash_new(md5, Args, KwArgs) end, no_bind},
         <<"pbkdf2_hmac">> => {py_native_call, fun hash_pbkdf2_hmac/2, no_bind}
     }};
 builtin_module(<<"hmac">>) ->
@@ -2798,7 +3014,10 @@ builtin_module(<<"time">>) ->
 builtin_module(<<"_frozen_importlib">>) ->
     {ok, frozen_importlib_alias_env(<<"_frozen_importlib">>, <<"importlib._bootstrap">>)};
 builtin_module(<<"_frozen_importlib_external">>) ->
-    {ok, frozen_importlib_alias_env(<<"_frozen_importlib_external">>, <<"importlib._bootstrap_external">>)};
+    {ok,
+        frozen_importlib_alias_env(
+            <<"_frozen_importlib_external">>, <<"importlib._bootstrap_external">>
+        )};
 builtin_module(<<"importlib">>) ->
     {ok, #{
         <<"__name__">> => <<"importlib">>,
@@ -2957,7 +3176,9 @@ builtin_module(<<"_scproxy">>) ->
         <<"__file__">> => builtin,
         <<"__package__">> => <<"">>,
         <<"__path__">> => none,
-        <<"_get_proxy_settings">> => fun() -> pyrlang_heap:dict([{<<"exclude_simple">>, false}, {<<"exceptions">>, {}}]) end,
+        <<"_get_proxy_settings">> => fun() ->
+            pyrlang_heap:dict([{<<"exclude_simple">>, false}, {<<"exceptions">>, {}}])
+        end,
         <<"_get_proxies">> => fun() -> pyrlang_heap:dict([]) end
     }};
 builtin_module(<<"unicodedata">>) ->
@@ -3012,10 +3233,15 @@ spawned_py_callable(Callable) ->
     pyrlang_eval:call(Callable, []).
 
 builtin_send(Pid, Message) ->
-    try pyrlang_actor:send(Pid, Message)
+    try
+        pyrlang_actor:send(Pid, Message)
     catch
         error:{unsendable, Reason} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), {unsendable, Reason}))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"TypeError">>), {unsendable, Reason}
+                )
+            )
     end.
 
 pkgutil_iter_modules([]) ->
@@ -3057,13 +3283,15 @@ pkgutil_walk_module_infos(Paths, Prefix, SeenPaths) ->
                         [Info];
                     false ->
                         ChildPrefix = <<Name/binary, ".">>,
-                        ChildInfos = pkgutil_walk_module_infos([PackagePathBin], ChildPrefix, SeenPaths#{PackagePathBin => true}),
+                        ChildInfos = pkgutil_walk_module_infos(
+                            [PackagePathBin], ChildPrefix, SeenPaths#{PackagePathBin => true}
+                        ),
                         [Info | ChildInfos]
                 end;
             _ ->
                 [Info]
         end
-        || {_Name, Info, PackagePath} <- pkgutil_module_entries(Paths, Prefix)
+     || {_Name, Info, PackagePath} <- pkgutil_module_entries(Paths, Prefix)
     ]).
 
 pkgutil_module_entries(Paths, Prefix) ->
@@ -3079,8 +3307,12 @@ pkgutil_module_entries(Paths, Prefix) ->
                                     {EntryAcc, EntrySeen};
                                 {Name, Info, PackagePath} ->
                                     case maps:is_key(Name, EntrySeen) of
-                                        true -> {EntryAcc, EntrySeen};
-                                        false -> {[{Name, Info, PackagePath} | EntryAcc], EntrySeen#{Name => true}}
+                                        true ->
+                                            {EntryAcc, EntrySeen};
+                                        false ->
+                                            {[{Name, Info, PackagePath} | EntryAcc], EntrySeen#{
+                                                Name => true
+                                            }}
                                     end
                             end
                         end,
@@ -3100,7 +3332,10 @@ pkgutil_entry_info(Dir, Entry, Prefix) ->
     Path = filename:join(Dir, Entry),
     case filelib:is_dir(Path) of
         true ->
-            case filelib:is_regular(filename:join(Path, "__init__.py")) orelse filelib:is_regular(filename:join(Path, "__init__.pyr")) of
+            case
+                filelib:is_regular(filename:join(Path, "__init__.py")) orelse
+                    filelib:is_regular(filename:join(Path, "__init__.pyr"))
+            of
                 true ->
                     Name = <<Prefix/binary, (unicode:characters_to_binary(Entry))/binary>>,
                     {Name, {none, Name, true}, unicode:characters_to_binary(Path)};
@@ -3229,7 +3464,8 @@ time_datetime_from_epoch(Seconds0) ->
 
 time_struct_tuple({Date = {Year, Month, Day}, {Hour, Minute, Second}}, IsLocal) ->
     Weekday = calendar:day_of_the_week(Date) - 1,
-    Yday = calendar:date_to_gregorian_days(Date) - calendar:date_to_gregorian_days({Year, 1, 1}) + 1,
+    Yday =
+        calendar:date_to_gregorian_days(Date) - calendar:date_to_gregorian_days({Year, 1, 1}) + 1,
     IsDst =
         case IsLocal of
             true -> -1;
@@ -3243,23 +3479,27 @@ time_tuple_to_seconds(TimeTuple) ->
 
 time_format(Format, TimeTuple) ->
     [Year, Month, Day, Hour, Minute, Second, Weekday, Yday | _Rest] = tuple_to_list(TimeTuple),
-    format_time_chars(binary_to_list(Format), #{
-        $A => weekday_name(Weekday),
-        $a => weekday_abbr(Weekday),
-        $B => month_name(Month),
-        $b => month_abbr(Month),
-        $Y => integer_to_binary(Year),
-        $m => two_digit(Month),
-        $d => two_digit(Day),
-        $H => two_digit(Hour),
-        $M => two_digit(Minute),
-        $S => two_digit(Second),
-        $w => integer_to_binary((Weekday + 1) rem 7),
-        $j => three_digit(Yday),
-        $z => <<>>,
-        $Z => <<"UTC">>,
-        $% => <<"%">>
-    }, []).
+    format_time_chars(
+        binary_to_list(Format),
+        #{
+            $A => weekday_name(Weekday),
+            $a => weekday_abbr(Weekday),
+            $B => month_name(Month),
+            $b => month_abbr(Month),
+            $Y => integer_to_binary(Year),
+            $m => two_digit(Month),
+            $d => two_digit(Day),
+            $H => two_digit(Hour),
+            $M => two_digit(Minute),
+            $S => two_digit(Second),
+            $w => integer_to_binary((Weekday + 1) rem 7),
+            $j => three_digit(Yday),
+            $z => <<>>,
+            $Z => <<"UTC">>,
+            $% => <<"%">>
+        },
+        []
+    ).
 
 format_time_chars([], _Values, Acc) ->
     iolist_to_binary(lists:reverse(Acc));
@@ -3270,23 +3510,50 @@ format_time_chars([Char | Rest], Values, Acc) ->
 
 weekday_name(Index) ->
     lists:nth(Index + 1, [
-        <<"Monday">>, <<"Tuesday">>, <<"Wednesday">>, <<"Thursday">>,
-        <<"Friday">>, <<"Saturday">>, <<"Sunday">>
+        <<"Monday">>,
+        <<"Tuesday">>,
+        <<"Wednesday">>,
+        <<"Thursday">>,
+        <<"Friday">>,
+        <<"Saturday">>,
+        <<"Sunday">>
     ]).
 
 weekday_abbr(Index) ->
-    lists:nth(Index + 1, [<<"Mon">>, <<"Tue">>, <<"Wed">>, <<"Thu">>, <<"Fri">>, <<"Sat">>, <<"Sun">>]).
+    lists:nth(Index + 1, [
+        <<"Mon">>, <<"Tue">>, <<"Wed">>, <<"Thu">>, <<"Fri">>, <<"Sat">>, <<"Sun">>
+    ]).
 
 month_name(Index) ->
     lists:nth(Index, [
-        <<"January">>, <<"February">>, <<"March">>, <<"April">>, <<"May">>, <<"June">>,
-        <<"July">>, <<"August">>, <<"September">>, <<"October">>, <<"November">>, <<"December">>
+        <<"January">>,
+        <<"February">>,
+        <<"March">>,
+        <<"April">>,
+        <<"May">>,
+        <<"June">>,
+        <<"July">>,
+        <<"August">>,
+        <<"September">>,
+        <<"October">>,
+        <<"November">>,
+        <<"December">>
     ]).
 
 month_abbr(Index) ->
     lists:nth(Index, [
-        <<"Jan">>, <<"Feb">>, <<"Mar">>, <<"Apr">>, <<"May">>, <<"Jun">>,
-        <<"Jul">>, <<"Aug">>, <<"Sep">>, <<"Oct">>, <<"Nov">>, <<"Dec">>
+        <<"Jan">>,
+        <<"Feb">>,
+        <<"Mar">>,
+        <<"Apr">>,
+        <<"May">>,
+        <<"Jun">>,
+        <<"Jul">>,
+        <<"Aug">>,
+        <<"Sep">>,
+        <<"Oct">>,
+        <<"Nov">>,
+        <<"Dec">>
     ]).
 
 two_digit(Value) when Value < 10 ->
@@ -3302,7 +3569,8 @@ three_digit(Value) ->
     integer_to_binary(Value).
 
 functools_wrapper_assignments() ->
-    {<<"__module__">>, <<"__name__">>, <<"__qualname__">>, <<"__doc__">>, <<"__annotations__">>, <<"__type_params__">>}.
+    {<<"__module__">>, <<"__name__">>, <<"__qualname__">>, <<"__doc__">>, <<"__annotations__">>,
+        <<"__type_params__">>}.
 
 functools_update_wrapper(Args, KwArgs0) ->
     Known = [<<"wrapper">>, <<"wrapped">>, <<"assigned">>, <<"updated">>],
@@ -3316,8 +3584,13 @@ functools_update_wrapper(Args, KwArgs0) ->
                 {Wrapper0, Wrapped0, Rest0};
             [Wrapper0] ->
                 case maps:find(<<"wrapped">>, KwArgs0) of
-                    {ok, Wrapped0} -> {Wrapper0, Wrapped0, []};
-                    error -> erlang:error({arity_error, {update_wrapper, missing_required_argument, <<"wrapped">>}})
+                    {ok, Wrapped0} ->
+                        {Wrapper0, Wrapped0, []};
+                    error ->
+                        erlang:error(
+                            {arity_error,
+                                {update_wrapper, missing_required_argument, <<"wrapped">>}}
+                        )
                 end;
             [] ->
                 case {maps:find(<<"wrapper">>, KwArgs0), maps:find(<<"wrapped">>, KwArgs0)} of
@@ -3325,14 +3598,22 @@ functools_update_wrapper(Args, KwArgs0) ->
                     _ -> erlang:error({arity_error, {update_wrapper, missing_required_argument}})
                 end
         end,
-    Assigned = functools_arg_or_kw(Rest, 1, <<"assigned">>, KwArgs0, functools_wrapper_assignments()),
+    Assigned = functools_arg_or_kw(
+        Rest, 1, <<"assigned">>, KwArgs0, functools_wrapper_assignments()
+    ),
     Updated = functools_arg_or_kw(Rest, 2, <<"updated">>, KwArgs0, {<<"__dict__">>}),
     case length(Rest) > 2 of
         true -> erlang:error({arity_error, {update_wrapper, length(Args)}});
         false -> ok
     end,
-    lists:foreach(fun(Attr) -> functools_assign_wrapper_attr(Wrapper, Wrapped, normalize_name(Attr)) end, pyrlang_iter:values(Assigned)),
-    lists:foreach(fun(Attr) -> functools_update_wrapper_attr(Wrapper, Wrapped, normalize_name(Attr)) end, pyrlang_iter:values(Updated)),
+    lists:foreach(
+        fun(Attr) -> functools_assign_wrapper_attr(Wrapper, Wrapped, normalize_name(Attr)) end,
+        pyrlang_iter:values(Assigned)
+    ),
+    lists:foreach(
+        fun(Attr) -> functools_update_wrapper_attr(Wrapper, Wrapped, normalize_name(Attr)) end,
+        pyrlang_iter:values(Updated)
+    ),
     ok = pyrlang_object:set_attr(Wrapper, <<"__wrapped__">>, Wrapped),
     Wrapper.
 
@@ -3361,7 +3642,9 @@ functools_update_wrapper_attr(Wrapper, Wrapped, Attr) ->
         Target ->
             Source = functools_wrapped_attr_default(Wrapped, Attr, pyrlang_heap:dict([])),
             try pyrlang_object:get_attr(Target, <<"update">>) of
-                Update -> _ = pyrlang_eval:call(Update, [Source]), ok
+                Update ->
+                    _ = pyrlang_eval:call(Update, [Source]),
+                    ok
             catch
                 _:_ -> ok
             end
@@ -3370,7 +3653,8 @@ functools_update_wrapper_attr(Wrapper, Wrapped, Attr) ->
     end.
 
 functools_wrapped_attr_default(Wrapped, Attr, Default) ->
-    try pyrlang_object:get_attr(Wrapped, Attr)
+    try
+        pyrlang_object:get_attr(Wrapped, Attr)
     catch
         error:{attribute_error, _} ->
             Default;
@@ -3384,11 +3668,16 @@ functools_wrapped_attr_default(Wrapped, Attr, Default) ->
 functools_wraps(Args, KwArgs) ->
     Wrapped =
         case Args of
-            [Wrapped0 | _Rest] -> Wrapped0;
+            [Wrapped0 | _Rest] ->
+                Wrapped0;
             [] ->
                 case maps:find(<<"wrapped">>, KwArgs) of
-                    {ok, Wrapped0} -> Wrapped0;
-                    error -> erlang:error({arity_error, {wraps, missing_required_argument, <<"wrapped">>}})
+                    {ok, Wrapped0} ->
+                        Wrapped0;
+                    error ->
+                        erlang:error(
+                            {arity_error, {wraps, missing_required_argument, <<"wrapped">>}}
+                        )
                 end
         end,
     Rest =
@@ -3426,30 +3715,37 @@ functools_cached_callable(Callable) ->
     Attrs = #{
         <<"__wrapped__">> => Callable,
         <<"__module__">> => functools_attr_default(Callable, <<"__module__">>, <<"functools">>),
-        <<"__name__">> => functools_attr_default(Callable, <<"__name__">>, <<"_lru_cache_wrapper">>),
-        <<"__qualname__">> => functools_attr_default(Callable, <<"__qualname__">>, <<"_lru_cache_wrapper">>),
+        <<"__name__">> => functools_attr_default(
+            Callable, <<"__name__">>, <<"_lru_cache_wrapper">>
+        ),
+        <<"__qualname__">> => functools_attr_default(
+            Callable, <<"__qualname__">>, <<"_lru_cache_wrapper">>
+        ),
         <<"__doc__">> => functools_attr_default(Callable, <<"__doc__">>, none),
-        <<"__annotations__">> => functools_attr_default(Callable, <<"__annotations__">>, pyrlang_heap:dict([])),
-        <<"__call__">> => {py_native_call, fun(Args, KwArgs) ->
-            trace_functools_cache(call_start, Callable),
-            Key = {functools_cache_key(Args), functools_cache_key(maps:to_list(KwArgs))},
-            trace_functools_cache(key_ready, Key),
-            Cache = functools_cache_map(CacheKey),
-            case maps:find(Key, Cache) of
-                {ok, Value} ->
-                    functools_cache_stat(StatsKey, hits),
-                    trace_functools_cache(cache_hit, Callable),
-                    Value;
-                error ->
-                    functools_cache_stat(StatsKey, misses),
-                    trace_functools_cache(cache_miss, Callable),
-                    Value = pyrlang_eval:call(Callable, {call_args, Args, KwArgs}),
-                    trace_functools_cache(call_done, Callable),
-                    erlang:put(CacheKey, maps:put(Key, Value, Cache)),
-                    trace_functools_cache(store_done, Callable),
-                    Value
-            end
-        end},
+        <<"__annotations__">> => functools_attr_default(
+            Callable, <<"__annotations__">>, pyrlang_heap:dict([])
+        ),
+        <<"__call__">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                trace_functools_cache(call_start, Callable),
+                Key = {functools_cache_key(Args), functools_cache_key(maps:to_list(KwArgs))},
+                trace_functools_cache(key_ready, Key),
+                Cache = functools_cache_map(CacheKey),
+                case maps:find(Key, Cache) of
+                    {ok, Value} ->
+                        functools_cache_stat(StatsKey, hits),
+                        trace_functools_cache(cache_hit, Callable),
+                        Value;
+                    error ->
+                        functools_cache_stat(StatsKey, misses),
+                        trace_functools_cache(cache_miss, Callable),
+                        Value = pyrlang_eval:call(Callable, {call_args, Args, KwArgs}),
+                        trace_functools_cache(call_done, Callable),
+                        erlang:put(CacheKey, maps:put(Key, Value, Cache)),
+                        trace_functools_cache(store_done, Callable),
+                        Value
+                end
+            end},
         <<"cache_clear">> => fun() ->
             erlang:put(CacheKey, #{}),
             erlang:put(StatsKey, #{hits => 0, misses => 0}),
@@ -3477,13 +3773,20 @@ functools_lru_cache_wrapper_get(Self, none, _Class) ->
 functools_lru_cache_wrapper_get(Self, Instance, _Class) ->
     {py_bound_method, Self, Instance}.
 
-functools_is_direct_callable({py_function, _Params, _Body, _Env}) -> true;
-functools_is_direct_callable({py_function, _Params, _Body, _Env, _Mode}) -> true;
-functools_is_direct_callable({py_function, _Params, _Body, _Env, _Mode, _Owner}) -> true;
-functools_is_direct_callable({py_bound_method, _Callable, _Self}) -> true;
-functools_is_direct_callable({py_native_varargs, _Fun}) -> true;
-functools_is_direct_callable({py_native_call, _Fun}) -> true;
-functools_is_direct_callable({py_native_callable, _Fun}) -> true;
+functools_is_direct_callable({py_function, _Params, _Body, _Env}) ->
+    true;
+functools_is_direct_callable({py_function, _Params, _Body, _Env, _Mode}) ->
+    true;
+functools_is_direct_callable({py_function, _Params, _Body, _Env, _Mode, _Owner}) ->
+    true;
+functools_is_direct_callable({py_bound_method, _Callable, _Self}) ->
+    true;
+functools_is_direct_callable({py_native_varargs, _Fun}) ->
+    true;
+functools_is_direct_callable({py_native_call, _Fun}) ->
+    true;
+functools_is_direct_callable({py_native_callable, _Fun}) ->
+    true;
 functools_is_direct_callable(Fun) when is_function(Fun) -> true;
 functools_is_direct_callable({py_ref, _} = Ref) ->
     try pyrlang_object:get_attr(Ref, <<"__call__">>) of
@@ -3491,7 +3794,8 @@ functools_is_direct_callable({py_ref, _} = Ref) ->
     catch
         _:_ -> false
     end;
-functools_is_direct_callable(_Value) -> false.
+functools_is_direct_callable(_Value) ->
+    false.
 
 functools_attr_default(Callable, Attr, Default) ->
     try pyrlang_object:get_attr(Callable, Attr) of
@@ -3515,10 +3819,18 @@ functools_singledispatch_wrapper(Func) ->
         <<"__name__">> => functools_attr_default(Func, <<"__name__">>, <<"wrapper">>),
         <<"__qualname__">> => functools_attr_default(Func, <<"__qualname__">>, <<"wrapper">>),
         <<"__doc__">> => functools_attr_default(Func, <<"__doc__">>, none),
-        <<"__annotations__">> => functools_attr_default(Func, <<"__annotations__">>, pyrlang_heap:dict([])),
-        <<"__call__">> => {py_native_call, fun(Args, KwArgs) -> functools_singledispatch_call(RegistryKey, Args, KwArgs) end},
+        <<"__annotations__">> => functools_attr_default(
+            Func, <<"__annotations__">>, pyrlang_heap:dict([])
+        ),
+        <<"__call__">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                functools_singledispatch_call(RegistryKey, Args, KwArgs)
+            end},
         <<"dispatch">> => fun(Class) -> functools_singledispatch_dispatch(RegistryKey, Class) end,
-        <<"register">> => {py_native_call, fun(Args, KwArgs) -> functools_singledispatch_register(RegistryKey, Args, KwArgs) end},
+        <<"register">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                functools_singledispatch_register(RegistryKey, Args, KwArgs)
+            end},
         <<"registry">> => pyrlang_heap:dict(maps:to_list(erlang:get(RegistryKey))),
         <<"_clear_cache">> => fun() -> none end
     },
@@ -3606,7 +3918,8 @@ functools_first_param_name(_Func) ->
     erlang:error(no_function_params).
 
 functools_dispatch_candidates({py_ref, _} = Class) ->
-    try pyrlang_object:mro(Class)
+    try
+        pyrlang_object:mro(Class)
     catch
         _:_ -> [Class, maps:get(<<"object">>, pyrlang_builtins:env())]
     end;
@@ -3651,7 +3964,10 @@ functools_cache_key(List) when is_list(List) ->
 functools_cache_key(Tuple) when is_tuple(Tuple) ->
     list_to_tuple([functools_cache_key(Value) || Value <- tuple_to_list(Tuple)]);
 functools_cache_key(Map) when is_map(Map) ->
-    maps:from_list([{functools_cache_key(Key), functools_cache_key(Value)} || {Key, Value} <- maps:to_list(Map)]);
+    maps:from_list([
+        {functools_cache_key(Key), functools_cache_key(Value)}
+     || {Key, Value} <- maps:to_list(Map)
+    ]);
 functools_cache_key(Value) ->
     Value.
 
@@ -3684,8 +4000,10 @@ functools_total_ordering(Class) ->
     lists:foreach(
         fun(Method) ->
             case Method =:= Root orelse total_ordering_has_method(Class, Method) of
-                true -> ok;
-                false -> ok = pyrlang_object:set_attr(Class, Method, total_ordering_method(Root, Method))
+                true ->
+                    ok;
+                false ->
+                    ok = pyrlang_object:set_attr(Class, Method, total_ordering_method(Root, Method))
             end
         end,
         [<<"__lt__">>, <<"__le__">>, <<"__gt__">>, <<"__ge__">>]
@@ -3695,8 +4013,15 @@ functools_total_ordering(Class) ->
 total_ordering_root(Class) ->
     Methods = [<<"__lt__">>, <<"__le__">>, <<"__gt__">>, <<"__ge__">>],
     case [Method || Method <- Methods, total_ordering_has_method(Class, Method)] of
-        [Root | _] -> Root;
-        [] -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"must define at least one ordering operation">>))
+        [Root | _] ->
+            Root;
+        [] ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>),
+                    <<"must define at least one ordering operation">>
+                )
+            )
     end.
 
 total_ordering_has_method(Class, Method) ->
@@ -3707,11 +4032,13 @@ total_ordering_has_method(Class, Method) ->
 
 total_ordering_method(<<"__lt__">>, <<"__le__">>) ->
     fun(Self, Other) ->
-        total_ordering_call(Self, <<"__lt__">>, Other) orelse total_ordering_call(Self, <<"__eq__">>, Other)
+        total_ordering_call(Self, <<"__lt__">>, Other) orelse
+            total_ordering_call(Self, <<"__eq__">>, Other)
     end;
 total_ordering_method(<<"__lt__">>, <<"__gt__">>) ->
     fun(Self, Other) ->
-        not (total_ordering_call(Self, <<"__lt__">>, Other) orelse total_ordering_call(Self, <<"__eq__">>, Other))
+        not (total_ordering_call(Self, <<"__lt__">>, Other) orelse
+            total_ordering_call(Self, <<"__eq__">>, Other))
     end;
 total_ordering_method(<<"__lt__">>, <<"__ge__">>) ->
     fun(Self, Other) ->
@@ -3719,7 +4046,8 @@ total_ordering_method(<<"__lt__">>, <<"__ge__">>) ->
     end;
 total_ordering_method(<<"__le__">>, <<"__lt__">>) ->
     fun(Self, Other) ->
-        total_ordering_call(Self, <<"__le__">>, Other) andalso not total_ordering_call(Self, <<"__eq__">>, Other)
+        total_ordering_call(Self, <<"__le__">>, Other) andalso
+            not total_ordering_call(Self, <<"__eq__">>, Other)
     end;
 total_ordering_method(<<"__le__">>, <<"__gt__">>) ->
     fun(Self, Other) ->
@@ -3727,11 +4055,13 @@ total_ordering_method(<<"__le__">>, <<"__gt__">>) ->
     end;
 total_ordering_method(<<"__le__">>, <<"__ge__">>) ->
     fun(Self, Other) ->
-        not (total_ordering_call(Self, <<"__le__">>, Other) andalso not total_ordering_call(Self, <<"__eq__">>, Other))
+        not (total_ordering_call(Self, <<"__le__">>, Other) andalso
+            not total_ordering_call(Self, <<"__eq__">>, Other))
     end;
 total_ordering_method(<<"__gt__">>, <<"__lt__">>) ->
     fun(Self, Other) ->
-        not (total_ordering_call(Self, <<"__gt__">>, Other) orelse total_ordering_call(Self, <<"__eq__">>, Other))
+        not (total_ordering_call(Self, <<"__gt__">>, Other) orelse
+            total_ordering_call(Self, <<"__eq__">>, Other))
     end;
 total_ordering_method(<<"__gt__">>, <<"__le__">>) ->
     fun(Self, Other) ->
@@ -3739,7 +4069,8 @@ total_ordering_method(<<"__gt__">>, <<"__le__">>) ->
     end;
 total_ordering_method(<<"__gt__">>, <<"__ge__">>) ->
     fun(Self, Other) ->
-        total_ordering_call(Self, <<"__gt__">>, Other) orelse total_ordering_call(Self, <<"__eq__">>, Other)
+        total_ordering_call(Self, <<"__gt__">>, Other) orelse
+            total_ordering_call(Self, <<"__eq__">>, Other)
     end;
 total_ordering_method(<<"__ge__">>, <<"__lt__">>) ->
     fun(Self, Other) ->
@@ -3747,11 +4078,13 @@ total_ordering_method(<<"__ge__">>, <<"__lt__">>) ->
     end;
 total_ordering_method(<<"__ge__">>, <<"__le__">>) ->
     fun(Self, Other) ->
-        not (total_ordering_call(Self, <<"__ge__">>, Other) andalso not total_ordering_call(Self, <<"__eq__">>, Other))
+        not (total_ordering_call(Self, <<"__ge__">>, Other) andalso
+            not total_ordering_call(Self, <<"__eq__">>, Other))
     end;
 total_ordering_method(<<"__ge__">>, <<"__gt__">>) ->
     fun(Self, Other) ->
-        total_ordering_call(Self, <<"__ge__">>, Other) andalso not total_ordering_call(Self, <<"__eq__">>, Other)
+        total_ordering_call(Self, <<"__ge__">>, Other) andalso
+            not total_ordering_call(Self, <<"__eq__">>, Other)
     end.
 
 total_ordering_call(Self, Method, Other) ->
@@ -3761,7 +4094,10 @@ functools_reduce([Func, Iterable]) ->
     case pyrlang_iter:values(Iterable) of
         [] ->
             pyrlang_exception:raise(
-                pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), <<"reduce() of empty iterable with no initial value">>)
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"TypeError">>),
+                    <<"reduce() of empty iterable with no initial value">>
+                )
             );
         [First | Rest] ->
             functools_reduce_values(Func, Rest, First)
@@ -3781,9 +4117,13 @@ functools_partial([Callable | BoundArgs], BoundKwArgs) ->
         <<"func">> => Callable,
         <<"args">> => list_to_tuple(BoundArgs),
         <<"keywords">> => pyrlang_heap:dict(maps:to_list(BoundKwArgs)),
-        <<"__call__">> => {py_native_call, fun(CallArgs, CallKwArgs) ->
-            pyrlang_eval:call(Callable, {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)})
-        end}
+        <<"__call__">> =>
+            {py_native_call, fun(CallArgs, CallKwArgs) ->
+                pyrlang_eval:call(
+                    Callable,
+                    {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)}
+                )
+            end}
     });
 functools_partial(Args, _KwArgs) ->
     erlang:error({arity_error, {partial, length(Args)}}).
@@ -3791,7 +4131,9 @@ functools_partial(Args, _KwArgs) ->
 functools_partialmethod([Callable | BoundArgs0], BoundKwArgs0) ->
     {Func, BoundArgs, BoundKwArgs} = flatten_partialmethod(Callable, BoundArgs0, BoundKwArgs0),
     pyrlang_object:descriptor(
-        fun(Instance, Class) -> partialmethod_get(Func, BoundArgs, BoundKwArgs, Instance, Class) end,
+        fun(Instance, Class) ->
+            partialmethod_get(Func, BoundArgs, BoundKwArgs, Instance, Class)
+        end,
         undefined,
         #{
             kind => partialmethod,
@@ -3804,8 +4146,14 @@ functools_partialmethod([Callable | BoundArgs0], BoundKwArgs0) ->
 functools_partialmethod(Args, _KwArgs) ->
     erlang:error({arity_error, {partialmethod, length(Args)}}).
 
-flatten_partialmethod(#{kind := partialmethod, func := Func, args := ExistingArgs} = PartialMethod, Args, KwArgs) ->
-    ExistingKwArgs = maps:get(kw_map, PartialMethod, maps:from_list(pyrlang_heap:dict_items(maps:get(keywords, PartialMethod)))),
+flatten_partialmethod(
+    #{kind := partialmethod, func := Func, args := ExistingArgs} = PartialMethod, Args, KwArgs
+) ->
+    ExistingKwArgs = maps:get(
+        kw_map,
+        PartialMethod,
+        maps:from_list(pyrlang_heap:dict_items(maps:get(keywords, PartialMethod)))
+    ),
     {Func, tuple_to_list(ExistingArgs) ++ Args, maps:merge(ExistingKwArgs, KwArgs)};
 flatten_partialmethod(Func, Args, KwArgs) ->
     {Func, Args, KwArgs}.
@@ -3817,7 +4165,11 @@ partialmethod_get(Func, BoundArgs, BoundKwArgs, undefined, Class) ->
         unbound ->
             {py_native_call, fun
                 ([Self | CallArgs], CallKwArgs) ->
-                    pyrlang_eval:call(Func, {call_args, [Self | BoundArgs ++ CallArgs], maps:merge(BoundKwArgs, CallKwArgs)});
+                    pyrlang_eval:call(
+                        Func,
+                        {call_args, [Self | BoundArgs ++ CallArgs],
+                            maps:merge(BoundKwArgs, CallKwArgs)}
+                    );
                 ([], _CallKwArgs) ->
                     erlang:error({arity_error, {partialmethod, missing_self}})
             end}
@@ -3828,13 +4180,19 @@ partialmethod_get(Func, BoundArgs, BoundKwArgs, Instance, Class) ->
             partialmethod_callable(BoundFunc, BoundArgs, BoundKwArgs);
         unbound ->
             {py_native_call, fun(CallArgs, CallKwArgs) ->
-                pyrlang_eval:call(Func, {call_args, [Instance | BoundArgs ++ CallArgs], maps:merge(BoundKwArgs, CallKwArgs)})
+                pyrlang_eval:call(
+                    Func,
+                    {call_args, [Instance | BoundArgs ++ CallArgs],
+                        maps:merge(BoundKwArgs, CallKwArgs)}
+                )
             end}
     end.
 
 partialmethod_callable(Func, BoundArgs, BoundKwArgs) ->
     {py_native_call, fun(CallArgs, CallKwArgs) ->
-        pyrlang_eval:call(Func, {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)})
+        pyrlang_eval:call(
+            Func, {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)}
+        )
     end}.
 
 partialmethod_descriptor_target(Func, Instance, Class) ->
@@ -3871,7 +4229,8 @@ functools_unwrap_partialmethod(Func, _Previous) ->
 
 partialmethod_func(Func) ->
     case partialmethod_attr(Func) of
-        {ok, PartialMethod} -> partialmethod_func(PartialMethod);
+        {ok, PartialMethod} ->
+            partialmethod_func(PartialMethod);
         error ->
             case Func of
                 #{kind := partialmethod, func := Inner} ->
@@ -3925,7 +4284,9 @@ subprocess_completed_process_new([Args, ReturnCode], KwArgs) ->
 subprocess_completed_process_new([Args, ReturnCode, Stdout], KwArgs) ->
     Stderr = maps:get(<<"stderr">>, KwArgs, none),
     subprocess_completed_process(Args, ReturnCode, Stdout, Stderr);
-subprocess_completed_process_new([Args, ReturnCode, Stdout, Stderr], KwArgs) when map_size(KwArgs) =:= 0 ->
+subprocess_completed_process_new([Args, ReturnCode, Stdout, Stderr], KwArgs) when
+    map_size(KwArgs) =:= 0
+->
     subprocess_completed_process(Args, ReturnCode, Stdout, Stderr);
 subprocess_completed_process_new(Args, _KwArgs) ->
     erlang:error({arity_error, {completed_process, length(Args)}}).
@@ -3952,7 +4313,9 @@ subprocess_run([Command], KwArgs) ->
         end,
     case Check andalso ReturnCode =/= 0 of
         true ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"CalledProcessError">>), ReturnCode));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"CalledProcessError">>), ReturnCode)
+            );
         false ->
             subprocess_completed_process(Command, ReturnCode, Stdout, Stderr)
     end;
@@ -3976,14 +4339,22 @@ run_exec_command(Command, Cwd) ->
         [Program | Args] ->
             run_port(Program, Args, Cwd);
         [] ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"empty subprocess command">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"empty subprocess command">>
+                )
+            )
     end.
 
 run_port(Program, Args, undefined) ->
-    Port = open_port({spawn_executable, Program}, [binary, exit_status, stderr_to_stdout, {args, Args}]),
+    Port = open_port({spawn_executable, Program}, [
+        binary, exit_status, stderr_to_stdout, {args, Args}
+    ]),
     collect_port(Port, []);
 run_port(Program, Args, Cwd) ->
-    Port = open_port({spawn_executable, Program}, [binary, exit_status, stderr_to_stdout, {args, Args}, {cd, Cwd}]),
+    Port = open_port({spawn_executable, Program}, [
+        binary, exit_status, stderr_to_stdout, {args, Args}, {cd, Cwd}
+    ]),
     collect_port(Port, []).
 
 collect_port(Port, Acc) ->
@@ -4050,14 +4421,20 @@ copy_deepcopy(Args) ->
 copy_deepcopy_value({py_ref, _} = Value, Memo) ->
     case pyrlang_heap:type(Value) of
         list ->
-            pyrlang_heap:list([copy_deepcopy_value(Item, Memo) || Item <- pyrlang_heap:list_items(Value)]);
+            pyrlang_heap:list([
+                copy_deepcopy_value(Item, Memo)
+             || Item <- pyrlang_heap:list_items(Value)
+            ]);
         dict ->
             pyrlang_heap:dict([
                 {copy_deepcopy_value(Key, Memo), copy_deepcopy_value(ItemValue, Memo)}
-                || {Key, ItemValue} <- pyrlang_heap:dict_items(Value)
+             || {Key, ItemValue} <- pyrlang_heap:dict_items(Value)
             ]);
         set ->
-            pyrlang_heap:set([copy_deepcopy_value(Item, Memo) || Item <- pyrlang_heap:set_items(Value)]);
+            pyrlang_heap:set([
+                copy_deepcopy_value(Item, Memo)
+             || Item <- pyrlang_heap:set_items(Value)
+            ]);
         class ->
             Value;
         module ->
@@ -4111,7 +4488,9 @@ itertools_chain_callable() ->
     }).
 
 itertools_chain(Iterables) ->
-    pyrlang_iter:from_values(lists:append([pyrlang_iter:values(Iterable) || Iterable <- Iterables])).
+    pyrlang_iter:from_values(
+        lists:append([pyrlang_iter:values(Iterable) || Iterable <- Iterables])
+    ).
 
 itertools_chain_from_iterable(Iterable) ->
     itertools_chain(pyrlang_iter:values(Iterable)).
@@ -4175,7 +4554,7 @@ zip_longest_rows(_ValueLists, _FillValue, 0) ->
 zip_longest_rows(ValueLists, FillValue, MaxLength) ->
     [
         list_to_tuple([nth_or_fill(Values, Index, FillValue) || Values <- ValueLists])
-        || Index <- lists:seq(1, MaxLength)
+     || Index <- lists:seq(1, MaxLength)
     ].
 
 nth_or_fill(Values, Index, _FillValue) when Index =< length(Values) ->
@@ -4207,7 +4586,9 @@ islice_values([], _Start, _Stop, _Step, _Pos, Acc) ->
     lists:reverse(Acc);
 islice_values(_Values, _Start, Stop, _Step, Pos, Acc) when Pos >= Stop ->
     lists:reverse(Acc);
-islice_values([Value | Rest], Start, Stop, Step, Pos, Acc) when Pos >= Start, ((Pos - Start) rem Step) =:= 0 ->
+islice_values([Value | Rest], Start, Stop, Step, Pos, Acc) when
+    Pos >= Start, ((Pos - Start) rem Step) =:= 0
+->
     islice_values(Rest, Start, Stop, Step, Pos + 1, [Value | Acc]);
 islice_values([_Value | Rest], Start, Stop, Step, Pos, Acc) ->
     islice_values(Rest, Start, Stop, Step, Pos + 1, Acc).
@@ -4228,8 +4609,8 @@ permutations([], _R) ->
 permutations(Values, R) ->
     [
         [Value | Rest]
-        || {Value, Remaining} <- pick_each(Values),
-           Rest <- permutations(Remaining, R - 1)
+     || {Value, Remaining} <- pick_each(Values),
+        Rest <- permutations(Remaining, R - 1)
     ].
 
 pick_each(Values) ->
@@ -4268,18 +4649,29 @@ itertools_count([Start, Step]) when is_number(Start), is_number(Step) ->
     Instance = pyrlang_object:instantiate(Class),
     ok = pyrlang_object:set_attr(Instance, <<"current">>, Start),
     ok = pyrlang_object:set_attr(Instance, <<"step">>, Step),
-    ok = pyrlang_object:set_attr(Instance, <<"__iter__">>, {py_native_callable, fun
-        ([]) -> Instance;
-        (CallArgs) -> erlang:error({arity_error, {'itertools.count.__iter__', length(CallArgs)}})
-    end}),
-    ok = pyrlang_object:set_attr(Instance, <<"__next__">>, {py_native_callable, fun
-        ([]) ->
-        Current = pyrlang_object:get_attr(Instance, <<"current">>),
-        CountStep = pyrlang_object:get_attr(Instance, <<"step">>),
-        ok = pyrlang_object:set_attr(Instance, <<"current">>, Current + CountStep),
-        Current;
-        (CallArgs) -> erlang:error({arity_error, {'itertools.count.__next__', length(CallArgs)}})
-    end}),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"__iter__">>,
+        {py_native_callable, fun
+            ([]) ->
+                Instance;
+            (CallArgs) ->
+                erlang:error({arity_error, {'itertools.count.__iter__', length(CallArgs)}})
+        end}
+    ),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"__next__">>,
+        {py_native_callable, fun
+            ([]) ->
+                Current = pyrlang_object:get_attr(Instance, <<"current">>),
+                CountStep = pyrlang_object:get_attr(Instance, <<"step">>),
+                ok = pyrlang_object:set_attr(Instance, <<"current">>, Current + CountStep),
+                Current;
+            (CallArgs) ->
+                erlang:error({arity_error, {'itertools.count.__next__', length(CallArgs)}})
+        end}
+    ),
     Instance;
 itertools_count(Args) ->
     erlang:error({arity_error, {itertools_count, length(Args)}}).
@@ -4290,29 +4682,42 @@ itertools_cycle([Iterable]) ->
     Instance = pyrlang_object:instantiate(Class),
     ok = pyrlang_object:set_attr(Instance, <<"values">>, Values),
     ok = pyrlang_object:set_attr(Instance, <<"index">>, 1),
-    ok = pyrlang_object:set_attr(Instance, <<"__iter__">>, {py_native_callable, fun
-        ([]) -> Instance;
-        (CallArgs) -> erlang:error({arity_error, {'itertools.cycle.__iter__', length(CallArgs)}})
-    end}),
-    ok = pyrlang_object:set_attr(Instance, <<"__next__">>, {py_native_callable, fun
-        ([]) ->
-            CycleValues = pyrlang_object:get_attr(Instance, <<"values">>),
-            case CycleValues of
-                [] ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)));
-                _ ->
-                    Index = pyrlang_object:get_attr(Instance, <<"index">>),
-                    Value = lists:nth(Index, CycleValues),
-                    NextIndex =
-                        case Index >= length(CycleValues) of
-                            true -> 1;
-                            false -> Index + 1
-                        end,
-                    ok = pyrlang_object:set_attr(Instance, <<"index">>, NextIndex),
-                    Value
-            end;
-        (CallArgs) -> erlang:error({arity_error, {'itertools.cycle.__next__', length(CallArgs)}})
-    end}),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"__iter__">>,
+        {py_native_callable, fun
+            ([]) ->
+                Instance;
+            (CallArgs) ->
+                erlang:error({arity_error, {'itertools.cycle.__iter__', length(CallArgs)}})
+        end}
+    ),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"__next__">>,
+        {py_native_callable, fun
+            ([]) ->
+                CycleValues = pyrlang_object:get_attr(Instance, <<"values">>),
+                case CycleValues of
+                    [] ->
+                        pyrlang_exception:raise(
+                            pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+                        );
+                    _ ->
+                        Index = pyrlang_object:get_attr(Instance, <<"index">>),
+                        Value = lists:nth(Index, CycleValues),
+                        NextIndex =
+                            case Index >= length(CycleValues) of
+                                true -> 1;
+                                false -> Index + 1
+                            end,
+                        ok = pyrlang_object:set_attr(Instance, <<"index">>, NextIndex),
+                        Value
+                end;
+            (CallArgs) ->
+                erlang:error({arity_error, {'itertools.cycle.__next__', length(CallArgs)}})
+        end}
+    ),
     Instance;
 itertools_cycle(Args) ->
     erlang:error({arity_error, {itertools_cycle, length(Args)}}).
@@ -4330,7 +4735,9 @@ itertools_groupby_values([], _KeyFun, Acc) ->
 itertools_groupby_values([Value | Rest], KeyFun, Acc) ->
     Key = itertools_groupby_key(Value, KeyFun),
     {Group, Remaining} = itertools_take_group(Rest, KeyFun, Key, [Value]),
-    itertools_groupby_values(Remaining, KeyFun, [{Key, pyrlang_heap:list(lists:reverse(Group))} | Acc]).
+    itertools_groupby_values(Remaining, KeyFun, [
+        {Key, pyrlang_heap:list(lists:reverse(Group))} | Acc
+    ]).
 
 itertools_take_group([], _KeyFun, _Key, Acc) ->
     {Acc, []};
@@ -4348,7 +4755,7 @@ itertools_groupby_key(Value, KeyFun) ->
 itertools_starmap(Function, Iterable) ->
     Values = [
         pyrlang_eval:call(Function, pyrlang_iter:values(Args))
-        || Args <- pyrlang_iter:values(Iterable)
+     || Args <- pyrlang_iter:values(Iterable)
     ],
     pyrlang_heap:list(Values).
 
@@ -4466,20 +4873,32 @@ collections_defaultdict_instance(Factory, Store) ->
         <<"__copy__">> => fun() -> defaultdict_copy(Factory, Store) end,
         <<"__deepcopy__">> => fun(Memo) -> defaultdict_deepcopy(Factory, Store, Memo) end,
         <<"__getitem__">> => fun(Key) -> defaultdict_getitem(Store, Factory, Key) end,
-        <<"__setitem__">> => fun(Key, Value) -> ok = pyrlang_heap:dict_put(Store, Key, Value), none end,
+        <<"__setitem__">> => fun(Key, Value) ->
+            ok = pyrlang_heap:dict_put(Store, Key, Value),
+            none
+        end,
         <<"__delitem__">> => fun(Key) ->
             ok = pyrlang_heap:dict_del(Store, Key),
             none
         end,
         <<"__contains__">> => fun(Key) -> pyrlang_heap:dict_contains(Store, Key) end,
         <<"__len__">> => fun() -> length(pyrlang_heap:dict_items(Store)) end,
-        <<"__iter__">> => fun() -> pyrlang_iter:iter(pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])) end,
+        <<"__iter__">> => fun() ->
+            pyrlang_iter:iter(
+                pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])
+            )
+        end,
         <<"get">> => {py_native_varargs, fun(Args) -> defaultdict_get(Store, Args) end},
-        <<"setdefault">> => {py_native_varargs, fun(Args) -> defaultdict_setdefault(Store, Args) end},
+        <<"setdefault">> =>
+            {py_native_varargs, fun(Args) -> defaultdict_setdefault(Store, Args) end},
         <<"pop">> => {py_native_varargs, fun(Args) -> defaultdict_pop(Store, Args) end},
         <<"items">> => fun() -> pyrlang_heap:list(pyrlang_heap:dict_items(Store)) end,
-        <<"keys">> => fun() -> pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)]) end,
-        <<"values">> => fun() -> pyrlang_heap:list([Value || {_Key, Value} <- pyrlang_heap:dict_items(Store)]) end,
+        <<"keys">> => fun() ->
+            pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])
+        end,
+        <<"values">> => fun() ->
+            pyrlang_heap:list([Value || {_Key, Value} <- pyrlang_heap:dict_items(Store)])
+        end,
         <<"copy">> => fun() -> defaultdict_copy(Factory, Store) end
     }).
 
@@ -4491,7 +4910,7 @@ defaultdict_deepcopy(Factory, Store, Memo) ->
         Factory,
         pyrlang_heap:dict([
             {copy_deepcopy_value(Key, Memo), copy_deepcopy_value(Value, Memo)}
-            || {Key, Value} <- pyrlang_heap:dict_items(Store)
+         || {Key, Value} <- pyrlang_heap:dict_items(Store)
         ])
     ).
 
@@ -4545,8 +4964,12 @@ defaultdict_pop(Store, [Key, Default]) ->
             Value;
         error ->
             case Default of
-                no_default -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key));
-                _ -> Default
+                no_default ->
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key)
+                    );
+                _ ->
+                    Default
             end
     end;
 defaultdict_pop(_Store, Args) ->
@@ -4579,7 +5002,10 @@ collections_counter_mapping_items({py_ref, _} = Ref) ->
         instance ->
             try pyrlang_object:get_attr(Ref, <<"items">>) of
                 ItemsMethod ->
-                    {ok, [pair_value(Item) || Item <- pyrlang_iter:values(pyrlang_eval:call(ItemsMethod, []))]}
+                    {ok, [
+                        pair_value(Item)
+                     || Item <- pyrlang_iter:values(pyrlang_eval:call(ItemsMethod, []))
+                    ]}
             catch
                 error:{attribute_error, _Name} -> error
             end;
@@ -4598,24 +5024,40 @@ collections_counter_count_values([Value | Rest], Counts) ->
     collections_counter_count_values(Rest, maps:put(Value, Current + 1, Counts)).
 
 collections_counter_merge_counts(Counts, KwArgs) ->
-    maps:fold(fun(Key, Value, Acc) -> maps:put(Key, maps:get(Key, Acc, 0) + Value, Acc) end, Counts, KwArgs).
+    maps:fold(
+        fun(Key, Value, Acc) -> maps:put(Key, maps:get(Key, Acc, 0) + Value, Acc) end,
+        Counts,
+        KwArgs
+    ).
 
 collections_counter_instance(Store) ->
     native_instance(<<"Counter">>, #{
         <<"__getitem__">> => fun(Key) -> counter_lookup(Store, Key, 0) end,
-        <<"__setitem__">> => fun(Key, Value) -> ok = pyrlang_heap:dict_put(Store, Key, Value), none end,
+        <<"__setitem__">> => fun(Key, Value) ->
+            ok = pyrlang_heap:dict_put(Store, Key, Value),
+            none
+        end,
         <<"__delitem__">> => fun(Key) ->
             ok = pyrlang_heap:dict_del(Store, Key),
             none
         end,
         <<"__contains__">> => fun(Key) -> pyrlang_heap:dict_contains(Store, Key) end,
         <<"__len__">> => fun() -> length(pyrlang_heap:dict_items(Store)) end,
-        <<"__iter__">> => fun() -> pyrlang_iter:iter(pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])) end,
+        <<"__iter__">> => fun() ->
+            pyrlang_iter:iter(
+                pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])
+            )
+        end,
         <<"get">> => {py_native_varargs, fun(Args) -> counter_get(Store, Args) end},
         <<"items">> => fun() -> pyrlang_heap:list(pyrlang_heap:dict_items(Store)) end,
-        <<"keys">> => fun() -> pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)]) end,
-        <<"values">> => fun() -> pyrlang_heap:list([Value || {_Key, Value} <- pyrlang_heap:dict_items(Store)]) end,
-        <<"update">> => {py_native_call, fun(Args, KwArgs) -> counter_update(Store, Args, KwArgs) end},
+        <<"keys">> => fun() ->
+            pyrlang_heap:list([Key || {Key, _Value} <- pyrlang_heap:dict_items(Store)])
+        end,
+        <<"values">> => fun() ->
+            pyrlang_heap:list([Value || {_Key, Value} <- pyrlang_heap:dict_items(Store)])
+        end,
+        <<"update">> =>
+            {py_native_call, fun(Args, KwArgs) -> counter_update(Store, Args, KwArgs) end},
         <<"most_common">> => {py_native_varargs, fun(Args) -> counter_most_common(Store, Args) end}
     }).
 
@@ -4659,7 +5101,10 @@ counter_most_common(_Store, Args) ->
     erlang:error({arity_error, {most_common, length(Args)}}).
 
 counter_sorted_items(Store) ->
-    lists:sort(fun({_KeyA, CountA}, {_KeyB, CountB}) -> CountA >= CountB end, pyrlang_heap:dict_items(Store)).
+    lists:sort(
+        fun({_KeyA, CountA}, {_KeyB, CountB}) -> CountA >= CountB end,
+        pyrlang_heap:dict_items(Store)
+    ).
 
 pair_value(Value) when is_tuple(Value), tuple_size(Value) =:= 2 ->
     {element(1, Value), element(2, Value)};
@@ -4691,7 +5136,11 @@ operator_attrgetter(Names) ->
     end.
 
 operator_get_dotted_attr(Object, Name) ->
-    lists:foldl(fun(Part, Current) -> operator_get_attr(Current, Part) end, Object, binary:split(Name, <<".">>, [global])).
+    lists:foldl(
+        fun(Part, Current) -> operator_get_attr(Current, Part) end,
+        Object,
+        binary:split(Name, <<".">>, [global])
+    ).
 
 operator_get_attr({py_ref, _} = Object, <<"__class__">>) ->
     try pyrlang_object:get_attr(Object, <<"__class__">>) of
@@ -4724,7 +5173,9 @@ operator_methodcaller([Name | BoundArgs], BoundKwArgs) ->
     {py_native_call, fun
         ([Object | CallArgs], CallKwArgs) ->
             Method = operator_get_attr(Object, MethodName),
-            pyrlang_eval:call(Method, {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)});
+            pyrlang_eval:call(
+                Method, {call_args, BoundArgs ++ CallArgs, maps:merge(BoundKwArgs, CallKwArgs)}
+            );
         (Args, _CallKwArgs) ->
             erlang:error({arity_error, {methodcaller_call, length(Args)}})
     end}.
@@ -4742,8 +5193,10 @@ operator_add(Left, Right) when is_binary(Left), is_binary(Right) ->
     <<Left/binary, Right/binary>>;
 operator_add({py_ref, _} = Left, {py_ref, _} = Right) ->
     case {pyrlang_heap:type(Left), pyrlang_heap:type(Right)} of
-        {list, list} -> pyrlang_heap:list(pyrlang_heap:list_items(Left) ++ pyrlang_heap:list_items(Right));
-        _ -> operator_binary_special(Left, Right, <<"__add__">>, <<"__radd__">>, operator_add)
+        {list, list} ->
+            pyrlang_heap:list(pyrlang_heap:list_items(Left) ++ pyrlang_heap:list_items(Right));
+        _ ->
+            operator_binary_special(Left, Right, <<"__add__">>, <<"__radd__">>, operator_add)
     end;
 operator_add(Left, Right) ->
     operator_binary_special(Left, Right, <<"__add__">>, <<"__radd__">>, operator_add).
@@ -4759,9 +5212,17 @@ operator_mul(Left, Right) when is_binary(Left), (is_integer(Right) orelse is_boo
 operator_mul(Left, Right) when (is_integer(Left) orelse is_boolean(Left)), is_binary(Right) ->
     binary:copy(Right, operator_repeat_count(operator_int(Left)));
 operator_mul(Left, Right) when is_tuple(Left), (is_integer(Right) orelse is_boolean(Right)) ->
-    list_to_tuple(lists:append(lists:duplicate(operator_repeat_count(operator_int(Right)), tuple_to_list(Left))));
+    list_to_tuple(
+        lists:append(
+            lists:duplicate(operator_repeat_count(operator_int(Right)), tuple_to_list(Left))
+        )
+    );
 operator_mul(Left, Right) when (is_integer(Left) orelse is_boolean(Left)), is_tuple(Right) ->
-    list_to_tuple(lists:append(lists:duplicate(operator_repeat_count(operator_int(Left)), tuple_to_list(Right))));
+    list_to_tuple(
+        lists:append(
+            lists:duplicate(operator_repeat_count(operator_int(Left)), tuple_to_list(Right))
+        )
+    );
 operator_mul(Left, Right) ->
     case operator_numeric_values(Left, Right) of
         {ok, LNum, RNum} -> LNum * RNum;
@@ -4770,16 +5231,26 @@ operator_mul(Left, Right) ->
 
 operator_truediv(Left, Right) ->
     case operator_numeric_values(Left, Right) of
-        {ok, _LNum, 0} -> operator_raise(<<"ZeroDivisionError">>, <<"division by zero">>);
-        {ok, LNum, RNum} -> LNum / RNum;
-        error -> operator_binary_special(Left, Right, <<"__truediv__">>, <<"__rtruediv__">>, operator_truediv)
+        {ok, _LNum, 0} ->
+            operator_raise(<<"ZeroDivisionError">>, <<"division by zero">>);
+        {ok, LNum, RNum} ->
+            LNum / RNum;
+        error ->
+            operator_binary_special(
+                Left, Right, <<"__truediv__">>, <<"__rtruediv__">>, operator_truediv
+            )
     end.
 
 operator_floordiv(Left, Right) ->
     case operator_numeric_values(Left, Right) of
-        {ok, _LNum, 0} -> operator_raise(<<"ZeroDivisionError">>, <<"integer division or modulo by zero">>);
-        {ok, LNum, RNum} -> floor(LNum / RNum);
-        error -> operator_binary_special(Left, Right, <<"__floordiv__">>, <<"__rfloordiv__">>, operator_floordiv)
+        {ok, _LNum, 0} ->
+            operator_raise(<<"ZeroDivisionError">>, <<"integer division or modulo by zero">>);
+        {ok, LNum, RNum} ->
+            floor(LNum / RNum);
+        error ->
+            operator_binary_special(
+                Left, Right, <<"__floordiv__">>, <<"__rfloordiv__">>, operator_floordiv
+            )
     end.
 
 operator_mod(Left, Right) ->
@@ -4823,7 +5294,9 @@ operator_and(Left, Right) ->
         error -> operator_binary_special(Left, Right, <<"__and__">>, <<"__rand__">>, operator_and)
     end.
 
-operator_or(Left, Right) when (is_integer(Left) orelse is_boolean(Left)), (is_integer(Right) orelse is_boolean(Right)) ->
+operator_or(Left, Right) when
+    (is_integer(Left) orelse is_boolean(Left)), (is_integer(Right) orelse is_boolean(Right))
+->
     operator_int(Left) bor operator_int(Right);
 operator_or({py_ref, _} = Left, Right) ->
     case pyrlang_heap:type(Left) of
@@ -4851,16 +5324,26 @@ operator_invert(Value) ->
 
 operator_lshift(Left, Right) ->
     case operator_integer_values(Left, Right) of
-        {ok, _LNum, RNum} when RNum < 0 -> operator_raise(<<"ValueError">>, <<"negative shift count">>);
-        {ok, LNum, RNum} -> LNum bsl RNum;
-        error -> operator_binary_special(Left, Right, <<"__lshift__">>, <<"__rlshift__">>, operator_lshift)
+        {ok, _LNum, RNum} when RNum < 0 ->
+            operator_raise(<<"ValueError">>, <<"negative shift count">>);
+        {ok, LNum, RNum} ->
+            LNum bsl RNum;
+        error ->
+            operator_binary_special(
+                Left, Right, <<"__lshift__">>, <<"__rlshift__">>, operator_lshift
+            )
     end.
 
 operator_rshift(Left, Right) ->
     case operator_integer_values(Left, Right) of
-        {ok, _LNum, RNum} when RNum < 0 -> operator_raise(<<"ValueError">>, <<"negative shift count">>);
-        {ok, LNum, RNum} -> LNum bsr RNum;
-        error -> operator_binary_special(Left, Right, <<"__rshift__">>, <<"__rrshift__">>, operator_rshift)
+        {ok, _LNum, RNum} when RNum < 0 ->
+            operator_raise(<<"ValueError">>, <<"negative shift count">>);
+        {ok, LNum, RNum} ->
+            LNum bsr RNum;
+        error ->
+            operator_binary_special(
+                Left, Right, <<"__rshift__">>, <<"__rrshift__">>, operator_rshift
+            )
     end.
 
 operator_or_special(Left, Right) ->
@@ -4988,7 +5471,8 @@ operator_getitem({py_ref, _} = Ref, Index) ->
     try
         case pyrlang_heap:type(Ref) of
             list when is_integer(Index) -> pyrlang_heap:list_get(Ref, Index);
-            dict -> pyrlang_heap:dict_get(Ref, Index);
+            dict ->
+                pyrlang_heap:dict_get(Ref, Index);
             instance ->
                 case operator_tuple_subclass_items(Ref) of
                     {ok, Items} when is_integer(Index) ->
@@ -4997,17 +5481,22 @@ operator_getitem({py_ref, _} = Ref, Index) ->
                         GetItem = pyrlang_object:get_attr(Ref, <<"__getitem__">>),
                         pyrlang_eval:call(GetItem, [Index])
                 end;
-            Type -> erlang:error({type_error, {getitem, Type}})
+            Type ->
+                erlang:error({type_error, {getitem, Type}})
         end
     catch
         error:{badkey, Missing} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Missing));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Missing)
+            );
         error:{attribute_error, _Name} ->
             operator_raise(<<"TypeError">>, <<"object is not subscriptable">>);
         throw:{py_exception, Exception} ->
             case pyrlang_exception:exception_type(Exception) of
-                <<"AttributeError">> -> operator_raise(<<"TypeError">>, <<"object is not subscriptable">>);
-                _ -> pyrlang_exception:raise(Exception)
+                <<"AttributeError">> ->
+                    operator_raise(<<"TypeError">>, <<"object is not subscriptable">>);
+                _ ->
+                    pyrlang_exception:raise(Exception)
             end
     end;
 operator_getitem(Binary, Index) when is_binary(Binary), is_integer(Index) ->
@@ -5029,7 +5518,9 @@ operator_delitem(_Object, _Index) ->
 
 operator_contains(Container, Item) ->
     Key = pyrlang_heap:value_key(Item),
-    lists:any(fun(Value) -> pyrlang_heap:value_key(Value) =:= Key end, pyrlang_iter:values(Container)).
+    lists:any(
+        fun(Value) -> pyrlang_heap:value_key(Value) =:= Key end, pyrlang_iter:values(Container)
+    ).
 
 operator_normalize_index(Index, Length) when Index < 0 ->
     Normalized = Length + Index,
@@ -5062,7 +5553,11 @@ bisect_right([A, X, Lo]) ->
     bisect_right([A, X, Lo, none]);
 bisect_right([A, X, Lo0, Hi0]) when is_integer(Lo0) ->
     Values = pyrlang_iter:values(A),
-    Hi = case Hi0 of none -> length(Values); Int when is_integer(Int) -> Int end,
+    Hi =
+        case Hi0 of
+            none -> length(Values);
+            Int when is_integer(Int) -> Int
+        end,
     bisect_right_values(Values, X, Lo0, Hi, 0);
 bisect_right(Args) ->
     erlang:error({arity_error, {bisect_right, length(Args)}}).
@@ -5085,7 +5580,11 @@ bisect_left([A, X, Lo]) ->
     bisect_left([A, X, Lo, none]);
 bisect_left([A, X, Lo0, Hi0]) when is_integer(Lo0) ->
     Values = pyrlang_iter:values(A),
-    Hi = case Hi0 of none -> length(Values); Int when is_integer(Int) -> Int end,
+    Hi =
+        case Hi0 of
+            none -> length(Values);
+            Int when is_integer(Int) -> Int
+        end,
     bisect_left_values(Values, X, Lo0, Hi, 0);
 bisect_left(Args) ->
     erlang:error({arity_error, {bisect_left, length(Args)}}).
@@ -5141,10 +5640,15 @@ bisect_insert({py_ref, _} = A, Index, X) ->
 
 builtin_atom(Value) ->
     Name = normalize_name(Value),
-    try binary_to_existing_atom(Name, utf8)
+    try
+        binary_to_existing_atom(Name, utf8)
     catch
         error:badarg ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"unknown atom: ", Name/binary>>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"unknown atom: ", Name/binary>>
+                )
+            )
     end.
 
 builtin_apply([Module, Function, ArgsValue], KwArgs) when map_size(KwArgs) =:= 0 ->
@@ -5175,12 +5679,17 @@ existing_atom_or_raise(Value) ->
         {ok, Atom} ->
             Atom;
         error ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"unknown atom: ", Name/binary>>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"unknown atom: ", Name/binary>>
+                )
+            )
     end.
 
 existing_atom(Value) ->
     Name = normalize_name(Value),
-    try {ok, binary_to_existing_atom(Name, utf8)}
+    try
+        {ok, binary_to_existing_atom(Name, utf8)}
     catch
         error:badarg -> error
     end.
@@ -5189,10 +5698,17 @@ to_erl_value(none) ->
     undefined;
 to_erl_value({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
-        list -> [to_erl_value(Item) || Item <- pyrlang_heap:list_items(Ref)];
-        dict -> maps:from_list([{to_erl_value(Key), to_erl_value(Value)} || {Key, Value} <- pyrlang_heap:dict_items(Ref)]);
-        set -> [to_erl_value(Item) || Item <- pyrlang_heap:set_items(Ref)];
-        Type -> erlang:error({type_error, {cannot_convert_to_erlang, Type}})
+        list ->
+            [to_erl_value(Item) || Item <- pyrlang_heap:list_items(Ref)];
+        dict ->
+            maps:from_list([
+                {to_erl_value(Key), to_erl_value(Value)}
+             || {Key, Value} <- pyrlang_heap:dict_items(Ref)
+            ]);
+        set ->
+            [to_erl_value(Item) || Item <- pyrlang_heap:set_items(Ref)];
+        Type ->
+            erlang:error({type_error, {cannot_convert_to_erlang, Type}})
     end;
 to_erl_value(Tuple) when is_tuple(Tuple) ->
     list_to_tuple([to_erl_value(Item) || Item <- tuple_to_list(Tuple)]);
@@ -5206,7 +5722,10 @@ from_erl_value(undefined) ->
 from_erl_value(List) when is_list(List) ->
     pyrlang_heap:list([from_erl_value(Item) || Item <- List]);
 from_erl_value(Map) when is_map(Map) ->
-    pyrlang_heap:dict([{from_erl_value(Key), from_erl_value(Value)} || {Key, Value} <- maps:to_list(Map)]);
+    pyrlang_heap:dict([
+        {from_erl_value(Key), from_erl_value(Value)}
+     || {Key, Value} <- maps:to_list(Map)
+    ]);
 from_erl_value(Tuple) when is_tuple(Tuple), tuple_size(Tuple) > 0, element(1, Tuple) =:= py_ref ->
     Tuple;
 from_erl_value(Tuple) when is_tuple(Tuple) ->
@@ -5228,9 +5747,12 @@ re_compile(Pattern, Flags) ->
         <<"pattern">> => PatternBin,
         <<"match">> => {py_native_varargs, fun(Args) -> re_pattern_match(PatternSpec, Args) end},
         <<"search">> => {py_native_varargs, fun(Args) -> re_pattern_search(PatternSpec, Args) end},
-        <<"fullmatch">> => {py_native_varargs, fun(Args) -> re_pattern_fullmatch(PatternSpec, Args) end},
-        <<"findall">> => {py_native_varargs, fun(Args) -> re_pattern_findall(PatternSpec, Args) end},
-        <<"finditer">> => {py_native_varargs, fun(Args) -> re_pattern_finditer(PatternSpec, Args) end},
+        <<"fullmatch">> =>
+            {py_native_varargs, fun(Args) -> re_pattern_fullmatch(PatternSpec, Args) end},
+        <<"findall">> =>
+            {py_native_varargs, fun(Args) -> re_pattern_findall(PatternSpec, Args) end},
+        <<"finditer">> =>
+            {py_native_varargs, fun(Args) -> re_pattern_finditer(PatternSpec, Args) end},
         <<"split">> => {py_native_varargs, fun(Args) -> re_pattern_split(PatternSpec, Args) end},
         <<"sub">> => {py_native_varargs, fun(Args) -> re_pattern_sub(PatternSpec, Args) end}
     }).
@@ -5370,9 +5892,14 @@ re_findall(Pattern, Text) ->
     {PatternBin, Options} = re_prepare_existing(Pattern),
     Values =
         case re:run(TextBin, PatternBin, Options ++ [global, {capture, all, index}]) of
-            {match, Matches} -> [re_findall_value(TextBin, Match) || Match <- Matches];
-            nomatch -> [];
-            {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason))
+            {match, Matches} ->
+                [re_findall_value(TextBin, Match) || Match <- Matches];
+            nomatch ->
+                [];
+            {error, Reason} ->
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason)
+                )
         end,
     pyrlang_heap:list(Values).
 
@@ -5381,9 +5908,14 @@ re_finditer(Pattern, Text) ->
     {PatternBin, Options} = re_prepare_existing(Pattern),
     Matches =
         case re:run(TextBin, PatternBin, Options ++ [global, {capture, all, index}]) of
-            {match, Found} -> Found;
-            nomatch -> [];
-            {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason))
+            {match, Found} ->
+                Found;
+            nomatch ->
+                [];
+            {error, Reason} ->
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason)
+                )
         end,
     pyrlang_heap:list([re_match_object(TextBin, PatternBin, Match) || Match <- Matches]).
 
@@ -5399,9 +5931,14 @@ re_split(Pattern, Text, MaxSplit) ->
     {PatternBin, Options} = re_prepare_existing(Pattern),
     Matches =
         case re:run(TextBin, PatternBin, Options ++ [global, {capture, all, index}]) of
-            {match, Found} -> limit_re_splits(Found, MaxSplit);
-            nomatch -> [];
-            {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason))
+            {match, Found} ->
+                limit_re_splits(Found, MaxSplit);
+            nomatch ->
+                [];
+            {error, Reason} ->
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason)
+                )
         end,
     pyrlang_heap:list(re_split_parts(TextBin, Matches, 0, [])).
 
@@ -5434,9 +5971,13 @@ re_sub(Pattern, Replacement, Text, Count) when is_integer(Count), Count >= 0 ->
         end,
     re_sub_loop(PatternBin, Options, Replacement, TextBin, Limit, 0, 0, []);
 re_sub(_Pattern, _Replacement, _Text, Count) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_count, Count})).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_count, Count})
+    ).
 
-re_sub_loop(_Pattern, _Options, _Replacement, Text, Limit, Done, Offset, Acc) when Limit =/= unlimited, Done >= Limit ->
+re_sub_loop(_Pattern, _Options, _Replacement, Text, Limit, Done, Offset, Acc) when
+    Limit =/= unlimited, Done >= Limit
+->
     re_sub_finish(Text, Offset, Acc);
 re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done, Offset, Acc) ->
     case re:run(Text, Pattern, Options ++ [{offset, Offset}, {capture, all, index}]) of
@@ -5447,14 +5988,20 @@ re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done, Offset, Acc) ->
             case {Len, Start < byte_size(Text)} of
                 {0, true} ->
                     Char = binary:part(Text, Start, 1),
-                    re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done + 1, Start + 1, [Char, Repl, Prefix | Acc]);
+                    re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done + 1, Start + 1, [
+                        Char, Repl, Prefix | Acc
+                    ]);
                 _ ->
-                    re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done + 1, Start + Len, [Repl, Prefix | Acc])
+                    re_sub_loop(Pattern, Options, Replacement, Text, Limit, Done + 1, Start + Len, [
+                        Repl, Prefix | Acc
+                    ])
             end;
         nomatch ->
             re_sub_finish(Text, Offset, Acc);
         {error, Reason} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason)
+            )
     end.
 
 re_sub_finish(Text, Offset, Acc) ->
@@ -5468,18 +6015,27 @@ re_replacement(Replacement, Match) ->
     end.
 
 re_callable(Value) when is_function(Value) -> true;
-re_callable({py_bound_method, _Callable, _Self}) -> true;
-re_callable({py_function, _Params, _Body, _Env}) -> true;
-re_callable({py_function, _Params, _Body, _Env, _IsGenerator}) -> true;
-re_callable({py_function, _Params, _Body, _Env, _IsGenerator, _OwnerClass}) -> true;
-re_callable({py_native_varargs, _Fun}) -> true;
-re_callable({py_native_callable, _Fun}) -> true;
-re_callable({py_native_call, _Fun}) -> true;
-re_callable({py_exception_type, _Type}) -> true;
+re_callable({py_bound_method, _Callable, _Self}) ->
+    true;
+re_callable({py_function, _Params, _Body, _Env}) ->
+    true;
+re_callable({py_function, _Params, _Body, _Env, _IsGenerator}) ->
+    true;
+re_callable({py_function, _Params, _Body, _Env, _IsGenerator, _OwnerClass}) ->
+    true;
+re_callable({py_native_varargs, _Fun}) ->
+    true;
+re_callable({py_native_callable, _Fun}) ->
+    true;
+re_callable({py_native_call, _Fun}) ->
+    true;
+re_callable({py_exception_type, _Type}) ->
+    true;
 re_callable({py_ref, _} = Ref) ->
     try
         case pyrlang_heap:type(Ref) of
-            class -> true;
+            class ->
+                true;
             _ ->
                 _ = pyrlang_object:get_attr(Ref, <<"__call__">>),
                 true
@@ -5487,14 +6043,20 @@ re_callable({py_ref, _} = Ref) ->
     catch
         error:{attribute_error, _Name} -> false
     end;
-re_callable(_Value) -> false.
+re_callable(_Value) ->
+    false.
 
 run_re({Pattern, RunOptions}, Text, Options) ->
     TextBin = normalize_name(Text),
     case re:run(TextBin, Pattern, Options ++ RunOptions ++ [{capture, all, index}]) of
-        {match, Spans} -> re_match_object(TextBin, Pattern, Spans);
-        nomatch -> none;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason))
+        {match, Spans} ->
+            re_match_object(TextBin, Pattern, Spans);
+        nomatch ->
+            none;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Reason)
+            )
     end.
 
 re_prepare_existing({Pattern, Options}) when is_binary(Pattern), is_list(Options) ->
@@ -5552,8 +6114,9 @@ re_strip_verbose(<<$], Rest/binary>>, false, true, Acc) ->
     re_strip_verbose(Rest, false, false, [$] | Acc]);
 re_strip_verbose(<<$#, Rest/binary>>, false, false, Acc) ->
     re_strip_verbose(skip_re_verbose_comment(Rest), false, false, Acc);
-re_strip_verbose(<<Char, Rest/binary>>, false, false, Acc)
-    when Char =:= $\s; Char =:= $\t; Char =:= $\n; Char =:= $\r; Char =:= $\f; Char =:= $\v ->
+re_strip_verbose(<<Char, Rest/binary>>, false, false, Acc) when
+    Char =:= $\s; Char =:= $\t; Char =:= $\n; Char =:= $\r; Char =:= $\f; Char =:= $\v
+->
     re_strip_verbose(Rest, false, false, Acc);
 re_strip_verbose(<<Char, Rest/binary>>, _Escaped, InClass, Acc) ->
     re_strip_verbose(Rest, false, InClass, [Char | Acc]).
@@ -5572,8 +6135,12 @@ re_match_object(Text, Pattern, Spans) ->
     Captures = [re_capture(Text, Span) || Span <- PaddedSpans],
     native_instance(<<"RegexMatch">>, #{
         <<"group">> => {py_native_varargs, fun(Args) -> re_group(Captures, GroupNames, Args) end},
-        <<"groups">> => {py_native_call, fun(Args, KwArgs) -> re_groups(Captures, Args, KwArgs) end},
-        <<"groupdict">> => {py_native_call, fun(Args, KwArgs) -> re_groupdict(Captures, GroupNames, Args, KwArgs) end},
+        <<"groups">> =>
+            {py_native_call, fun(Args, KwArgs) -> re_groups(Captures, Args, KwArgs) end},
+        <<"groupdict">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                re_groupdict(Captures, GroupNames, Args, KwArgs)
+            end},
         <<"__getitem__">> => fun(Key) -> re_group_by_key(Captures, GroupNames, Key) end,
         <<"start">> => {py_native_varargs, fun(Args) -> re_start(CharSpans, Args) end},
         <<"end">> => {py_native_varargs, fun(Args) -> re_end(CharSpans, Args) end},
@@ -5612,7 +6179,9 @@ re_group(Captures, []) ->
 re_group(Captures, [Index]) when is_integer(Index), Index >= 0, Index < length(Captures) ->
     lists:nth(Index + 1, Captures);
 re_group(_Captures, [Index]) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)
+    );
 re_group(Captures, Args) ->
     list_to_tuple([re_group(Captures, [Index]) || Index <- Args]).
 
@@ -5634,15 +6203,19 @@ re_group_by_key(Captures, _GroupNames, Key) when is_integer(Key) ->
 re_group_by_key(Captures, GroupNames, Key) ->
     Name = normalize_name(Key),
     case maps:find(Name, GroupNames) of
-        {ok, Index} -> re_group(Captures, [Index]);
-        error -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Name))
+        {ok, Index} ->
+            re_group(Captures, [Index]);
+        error ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Name)
+            )
     end.
 
 re_groupdict(Captures, GroupNames, Args, KwArgs) ->
     Default = re_default_arg(groupdict, Args, KwArgs),
     pyrlang_heap:dict([
         {Name, re_default_capture(re_group(Captures, [Index]), Default)}
-        || {Name, Index} <- maps:to_list(GroupNames)
+     || {Name, Index} <- maps:to_list(GroupNames)
     ]).
 
 re_default_arg(_Name, [], KwArgs) ->
@@ -5714,7 +6287,9 @@ re_span_value(Spans, []) ->
 re_span_value(Spans, [Index]) when is_integer(Index), Index >= 0, Index < length(Spans) ->
     lists:nth(Index + 1, Spans);
 re_span_value(_Spans, [Index]) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)
+    );
 re_span_value(_Spans, Args) ->
     erlang:error({arity_error, {re_span, length(Args)}}).
 
@@ -5724,7 +6299,9 @@ native_instance(Name, Attrs0) ->
     Attrs1 = put_new_attr(<<"__pyrlang_unsendable__">>, {native_instance, Name}, Attrs0),
     Attrs2 = put_new_attr(<<"__copy__">>, fun() -> Instance end, Attrs1),
     Attrs = put_new_attr(<<"__deepcopy__">>, fun(_Memo) -> Instance end, Attrs2),
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs
+    ),
     Instance.
 
 native_instance_class(Name) ->
@@ -5734,7 +6311,10 @@ native_instance_class(Name) ->
             create_native_instance_class(Key, Name);
         Class ->
             try
-                case pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name of
+                case
+                    pyrlang_heap:type(Class) =:= class andalso
+                        pyrlang_object:class_name(Class) =:= Name
+                of
                     true -> Class;
                     false -> create_native_instance_class(Key, Name)
                 end
@@ -5753,11 +6333,15 @@ native_instance(Class, Name, Attrs0) ->
     Attrs1 = put_new_attr(<<"__pyrlang_unsendable__">>, {native_instance, Name}, Attrs0),
     Attrs2 = put_new_attr(<<"__copy__">>, fun() -> Instance end, Attrs1),
     Attrs = put_new_attr(<<"__deepcopy__">>, fun(_Memo) -> Instance end, Attrs2),
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs
+    ),
     Instance.
 
 contextlib_contextmanager([Func], KwArgs) when map_size(KwArgs) =:= 0 ->
-    {py_native_call, fun(Args, CallKwArgs) -> contextlib_contextmanager_instance(Func, Args, CallKwArgs) end};
+    {py_native_call, fun(Args, CallKwArgs) ->
+        contextlib_contextmanager_instance(Func, Args, CallKwArgs)
+    end};
 contextlib_contextmanager(Args, _KwArgs) ->
     erlang:error({arity_error, {contextmanager, length(Args)}}).
 
@@ -5766,7 +6350,9 @@ contextlib_contextmanager_instance(Func, Args, KwArgs) ->
     erlang:put(Key, #{func => Func, args => {call_args, Args, KwArgs}, state => new}),
     native_instance(<<"_GeneratorContextManager">>, #{
         <<"__enter__">> => fun() -> contextlib_cm_enter(Key) end,
-        <<"__exit__">> => fun(Type, Value, Traceback) -> contextlib_cm_exit(Key, Type, Value, Traceback) end,
+        <<"__exit__">> => fun(Type, Value, Traceback) ->
+            contextlib_cm_exit(Key, Type, Value, Traceback)
+        end,
         <<"_recreate_cm">> => fun() -> contextlib_contextmanager_instance(Func, Args, KwArgs) end
     }).
 
@@ -5820,7 +6406,9 @@ contextlib_cm_exit_exception(Key, Value) ->
     end.
 
 contextlib_runtime_error(Message) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"RuntimeError">>), Message)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"RuntimeError">>), Message)
+    ).
 
 put_new_attr(Key, Value, Map) ->
     case maps:is_key(Key, Map) of
@@ -5860,13 +6448,17 @@ hash_object(Algorithm, Data) ->
         <<"hexdigest">> => fun() -> hex(hash_digest(Instance)) end,
         <<"copy">> => fun() -> hash_copy(Instance) end
     },
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs
+    ),
     Instance.
 
 hash_update(Hash, UpdateData) ->
     Current = pyrlang_object:get_attr(Hash, <<"__pyrlang_hash_data__">>),
     UpdateBin = normalize_bytes(UpdateData),
-    ok = pyrlang_object:set_attr(Hash, <<"__pyrlang_hash_data__">>, <<Current/binary, UpdateBin/binary>>),
+    ok = pyrlang_object:set_attr(
+        Hash, <<"__pyrlang_hash_data__">>, <<Current/binary, UpdateBin/binary>>
+    ),
     none.
 
 hash_digest(Hash) ->
@@ -5898,7 +6490,9 @@ hash_pbkdf2_hmac(Args, KwArgs0) when length(Args) =< 5 ->
         [] ->
             Algorithm = digest_algorithm(HashName),
             Length = pbkdf2_length(Algorithm, DkLen),
-            crypto:pbkdf2_hmac(Algorithm, normalize_bytes(Password), normalize_bytes(Salt), Iterations, Length);
+            crypto:pbkdf2_hmac(
+                Algorithm, normalize_bytes(Password), normalize_bytes(Salt), Iterations, Length
+            );
         [{Unknown, _Value} | _] ->
             erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
     end;
@@ -5935,8 +6529,10 @@ hmac_new(Args, KwArgs0) when length(Args) =< 3 ->
     {Message, KwArgs2} = take_kw_or_default(<<"msg">>, Message0, <<>>, KwArgs1),
     {DigestMod, KwArgs} = take_kw_or_required(<<"digestmod">>, DigestMod0, KwArgs2),
     case maps:to_list(KwArgs) of
-        [] -> hmac_new_bound(Key, Message, DigestMod);
-        [{Unknown, _Value} | _] -> erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
+        [] ->
+            hmac_new_bound(Key, Message, DigestMod);
+        [{Unknown, _Value} | _] ->
+            erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
     end;
 hmac_new(Args, _KwArgs) ->
     erlang:error({arity_error, {hmac_new, length(Args)}}).
@@ -5963,10 +6559,14 @@ digest_object(Name, Digest) ->
         <<"hexdigest">> => fun() -> hex(Digest) end
     }).
 
-digest_algorithm(<<"sha1">>) -> sha;
-digest_algorithm(<<"sha256">>) -> sha256;
-digest_algorithm(<<"sha512">>) -> sha512;
-digest_algorithm(<<"md5">>) -> md5;
+digest_algorithm(<<"sha1">>) ->
+    sha;
+digest_algorithm(<<"sha256">>) ->
+    sha256;
+digest_algorithm(<<"sha512">>) ->
+    sha512;
+digest_algorithm(<<"md5">>) ->
+    md5;
 digest_algorithm(Name) when is_list(Name); is_atom(Name); is_binary(Name) ->
     digest_algorithm(normalize_name(Name));
 digest_algorithm(DigestMod) ->
@@ -5977,7 +6577,8 @@ digest_algorithm(DigestMod) ->
         _:_ -> erlang:error({value_error, {unsupported_digestmod, DigestMod}})
     end.
 
-digest_name(sha) -> <<"sha1">>;
+digest_name(sha) ->
+    <<"sha1">>;
 digest_name(Algorithm) when is_atom(Algorithm) ->
     atom_to_binary(Algorithm, utf8).
 
@@ -6026,8 +6627,15 @@ zlib_compress_call(Args, KwArgs) ->
     end.
 
 zlib_decompress_call([Data], _KwArgs) ->
-    try zlib:uncompress(normalize_name(Data))
-    catch error:_ -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ZlibError">>), <<"invalid compressed data">>))
+    try
+        zlib:uncompress(normalize_name(Data))
+    catch
+        error:_ ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ZlibError">>), <<"invalid compressed data">>
+                )
+            )
     end;
 zlib_decompress_call([Data, _Wbits], _KwArgs) ->
     zlib_decompress_call([Data], #{});
@@ -6055,10 +6663,14 @@ adler32(Data, Initial) ->
     A0 = Initial band 16#ffff,
     B0 = (Initial bsr 16) band 16#ffff,
     {A, B} =
-        lists:foldl(fun(Byte, {AccA, AccB}) ->
-            NextA = (AccA + Byte) rem 65521,
-            {NextA, (AccB + NextA) rem 65521}
-        end, {A0, B0}, binary_to_list(Data)),
+        lists:foldl(
+            fun(Byte, {AccA, AccB}) ->
+                NextA = (AccA + Byte) rem 65521,
+                {NextA, (AccB + NextA) rem 65521}
+            end,
+            {A0, B0},
+            binary_to_list(Data)
+        ),
     (B bsl 16) bor A.
 
 gzip_env() ->
@@ -6086,7 +6698,12 @@ gzip_open_call([Path, Mode0], KwArgs0) ->
                 true ->
                     gzip_file_instance(Path, Mode);
                 false ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"unsupported gzip mode: ", Mode/binary>>))
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(
+                            pyrlang_exception:type(<<"ValueError">>),
+                            <<"unsupported gzip mode: ", Mode/binary>>
+                        )
+                    )
             end;
         Extra ->
             erlang:error({type_error, {unexpected_keyword_argument, Extra}})
@@ -6104,17 +6721,27 @@ gzip_file_instance(Path0, _Mode) ->
     case file:read_file(binary_to_list(Path)) of
         {ok, Compressed} ->
             case gzip_unzip(Compressed) of
-                {ok, Data} -> gzip_memory_file(Data);
-                {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason))
+                {ok, Data} ->
+                    gzip_memory_file(Data);
+                {error, Reason} ->
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason)
+                    )
             end;
         {error, Reason} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason)
+            )
     end.
 
 gzip_decompress([Data]) ->
     case gzip_unzip(normalize_bytes(Data)) of
-        {ok, Plain} -> Plain;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason))
+        {ok, Plain} ->
+            Plain;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason)
+            )
     end;
 gzip_decompress(Args) ->
     erlang:error({arity_error, {gzip_decompress, length(Args)}}).
@@ -6162,7 +6789,8 @@ gzip_gzipfile_for_mode(_Filename, Mode, FileObj) ->
     end.
 
 gzip_unzip(Data) ->
-    try {ok, zlib:gunzip(Data)}
+    try
+        {ok, zlib:gunzip(Data)}
     catch
         error:Reason -> {error, Reason}
     end.
@@ -6173,9 +6801,13 @@ gzip_memory_file(Data) ->
     Class = native_instance_class(<<"GzipFile">>),
     Instance = pyrlang_object:instantiate(Class),
     ok = pyrlang_object:set_attr(Instance, <<"__pyrlang_unsendable__">>, gzip_file),
-    ok = pyrlang_object:set_attr(Instance, <<"read">>, {py_native_varargs, fun(Args) -> gzip_file_read(Key, Args) end}),
+    ok = pyrlang_object:set_attr(
+        Instance, <<"read">>, {py_native_varargs, fun(Args) -> gzip_file_read(Key, Args) end}
+    ),
     ok = pyrlang_object:set_attr(Instance, <<"close">>, fun() -> gzip_file_close(Key) end),
-    ok = pyrlang_object:set_attr(Instance, <<"__iter__">>, fun() -> pyrlang_iter:from_values(gzip_lines(Data)) end),
+    ok = pyrlang_object:set_attr(Instance, <<"__iter__">>, fun() ->
+        pyrlang_iter:from_values(gzip_lines(Data))
+    end),
     ok = pyrlang_object:set_attr(Instance, <<"__enter__">>, fun() -> Instance end),
     ok = pyrlang_object:set_attr(Instance, <<"__exit__">>, fun(_Type, _Value, _Traceback) ->
         _ = gzip_file_close(Key),
@@ -6216,9 +6848,13 @@ gzip_file_close(Key) ->
 gzip_file_state(Key) ->
     case erlang:get(Key) of
         undefined ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), closed));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), closed)
+            );
         #{closed := true} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), closed));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), closed)
+            );
         State ->
             State
     end.
@@ -6246,7 +6882,9 @@ gzip_writer(FileObj) ->
     Class = native_instance_class(<<"GzipFile">>),
     Instance = pyrlang_object:instantiate(Class),
     ok = pyrlang_object:set_attr(Instance, <<"__pyrlang_unsendable__">>, gzip_writer),
-    ok = pyrlang_object:set_attr(Instance, <<"write">>, fun(Data) -> gzip_writer_write(Key, Data) end),
+    ok = pyrlang_object:set_attr(Instance, <<"write">>, fun(Data) ->
+        gzip_writer_write(Key, Data)
+    end),
     ok = pyrlang_object:set_attr(Instance, <<"close">>, fun() -> gzip_writer_close(Key) end),
     ok = pyrlang_object:set_attr(Instance, <<"__enter__">>, fun() -> Instance end),
     ok = pyrlang_object:set_attr(Instance, <<"__exit__">>, fun(_Type, _Value, _Traceback) ->
@@ -6323,8 +6961,10 @@ binascii_a2b_base64([Data], KwArgs) ->
             true -> normalize_name(Data);
             _ -> binascii_base64_payload(normalize_name(Data))
         end,
-    try base64:decode(Input)
-    catch error:_ -> binascii_error(<<"Incorrect padding">>)
+    try
+        base64:decode(Input)
+    catch
+        error:_ -> binascii_error(<<"Incorrect padding">>)
     end;
 binascii_a2b_base64(Args, _KwArgs) ->
     erlang:error({arity_error, {a2b_base64, length(Args)}}).
@@ -6347,7 +6987,7 @@ binascii_unhexlify(Args) ->
     erlang:error({arity_error, {unhexlify, length(Args)}}).
 
 binascii_base64_payload(Data) ->
-    << <<Byte>> || <<Byte:8>> <= Data, binascii_base64_byte(Byte) >>.
+    <<<<Byte>> || <<Byte:8>> <= Data, binascii_base64_byte(Byte)>>.
 
 binascii_base64_byte(Byte) when Byte >= $A, Byte =< $Z -> true;
 binascii_base64_byte(Byte) when Byte >= $a, Byte =< $z -> true;
@@ -6358,7 +6998,10 @@ binascii_base64_byte($=) -> true;
 binascii_base64_byte(_) -> false.
 
 binascii_hexlify_binary(Data) ->
-    iolist_to_binary([[binascii_hex_digit(Byte bsr 4), binascii_hex_digit(Byte band 15)] || <<Byte:8>> <= Data]).
+    iolist_to_binary([
+        [binascii_hex_digit(Byte bsr 4), binascii_hex_digit(Byte band 15)]
+     || <<Byte:8>> <= Data
+    ]).
 
 binascii_hex_digit(Value) when Value < 10 ->
     $0 + Value;
@@ -6391,7 +7034,9 @@ binascii_error(Message) ->
     pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"Error">>), Message)).
 
 string_formatter_parser([Format]) ->
-    pyrlang_heap:list(string_formatter_segments(binary_to_list(normalize_name(Format)), [], [], false));
+    pyrlang_heap:list(
+        string_formatter_segments(binary_to_list(normalize_name(Format)), [], [], false)
+    );
 string_formatter_parser(Args) ->
     erlang:error({arity_error, {formatter_parser, length(Args)}}).
 
@@ -6411,7 +7056,9 @@ string_formatter_segments([${ | Rest0], LiteralAcc, SegmentsAcc, _SeenField) ->
     case string_take_format_field(Rest0, []) of
         {ok, FieldChars, Rest} ->
             Literal = unicode:characters_to_binary(lists:reverse(LiteralAcc)),
-            Segment = string_formatter_segment(Literal, unicode:characters_to_binary(lists:reverse(FieldChars))),
+            Segment = string_formatter_segment(
+                Literal, unicode:characters_to_binary(lists:reverse(FieldChars))
+            ),
             string_formatter_segments(Rest, [], [Segment | SegmentsAcc], true);
         error ->
             string_formatter_segments(Rest0, [${ | LiteralAcc], SegmentsAcc, true)
@@ -6518,10 +7165,12 @@ secrets_token_hex(Count) when is_integer(Count), Count >= 0 ->
 secrets_choice(Sequence) ->
     case pyrlang_iter:values(Sequence) of
         [] ->
-            pyrlang_exception:raise(pyrlang_exception:make(
-                pyrlang_exception:type(<<"IndexError">>),
-                <<"Cannot choose from an empty sequence">>
-            ));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"IndexError">>),
+                    <<"Cannot choose from an empty sequence">>
+                )
+            );
         Values ->
             Index = binary:decode_unsigned(crypto:strong_rand_bytes(8)),
             lists:nth((Index rem length(Values)) + 1, Values)
@@ -6539,9 +7188,11 @@ types_coroutine(Callable) ->
     Callable.
 
 types_mapping_proxy_type() ->
-    pyrlang_object:new_class(<<"mappingproxy">>, [maps:get(<<"object">>, pyrlang_builtins:env())], #{
-        <<"__pyrlang_builtin_constructor__">> => {py_native_varargs, fun types_mapping_proxy/1}
-    }).
+    pyrlang_object:new_class(
+        <<"mappingproxy">>, [maps:get(<<"object">>, pyrlang_builtins:env())], #{
+            <<"__pyrlang_builtin_constructor__">> => {py_native_varargs, fun types_mapping_proxy/1}
+        }
+    ).
 
 types_mapping_proxy([{py_ref, _} = Ref]) ->
     case pyrlang_heap:type(Ref) of
@@ -6574,11 +7225,17 @@ array_instance(TypeCode, Items) ->
             none
         end,
         <<"extend">> => fun(Iterable) ->
-            lists:foreach(fun(Value) -> ok = pyrlang_heap:list_append(ItemsRef, Value) end, pyrlang_iter:values(Iterable)),
+            lists:foreach(
+                fun(Value) -> ok = pyrlang_heap:list_append(ItemsRef, Value) end,
+                pyrlang_iter:values(Iterable)
+            ),
             none
         end,
         <<"frombytes">> => fun(Bytes) ->
-            lists:foreach(fun(Value) -> ok = pyrlang_heap:list_append(ItemsRef, Value) end, array_values_from_bytes(TypeCode, normalize_name(Bytes))),
+            lists:foreach(
+                fun(Value) -> ok = pyrlang_heap:list_append(ItemsRef, Value) end,
+                array_values_from_bytes(TypeCode, normalize_name(Bytes))
+            ),
             none
         end,
         <<"tobytes">> => fun() ->
@@ -6599,7 +7256,7 @@ array_instance(TypeCode, Items) ->
     }).
 
 array_values_to_bytes(<<"i">>, Values) ->
-    << <<(array_signed32(Value)):32/little-signed-integer>> || Value <- Values >>;
+    <<<<(array_signed32(Value)):32/little-signed-integer>> || Value <- Values>>;
 array_values_to_bytes(_TypeCode, Values) ->
     list_to_binary([Value band 16#ff || Value <- Values]).
 
@@ -6646,47 +7303,160 @@ contextvar_set(Ref, Default, Value) ->
     Old = erlang:get({pyrlang_contextvar, Ref}),
     erlang:put({pyrlang_contextvar, Ref}, Value),
     native_instance(<<"Token">>, #{
-        <<"old_value">> => case Old of undefined -> Default; _ -> Old end
+        <<"old_value">> =>
+            case Old of
+                undefined -> Default;
+                _ -> Old
+            end
     }).
 
 ast_env() ->
     AST = ast_class(<<"AST">>, []),
     ClassNames = [
-        <<"Add">>, <<"And">>, <<"AnnAssign">>, <<"Assert">>, <<"Assign">>, <<"AsyncFor">>,
-        <<"AsyncFunctionDef">>, <<"AsyncWith">>, <<"Attribute">>, <<"AugAssign">>, <<"Await">>,
-        <<"BinOp">>, <<"BitAnd">>, <<"BitOr">>, <<"BitXor">>, <<"BoolOp">>, <<"Break">>,
-        <<"Bytes">>, <<"Call">>, <<"ClassDef">>, <<"Compare">>, <<"Constant">>, <<"Continue">>, <<"Del">>,
-        <<"Delete">>, <<"Dict">>, <<"DictComp">>, <<"Div">>, <<"Eq">>, <<"ExceptHandler">>,
-        <<"Ellipsis">>, <<"Expr">>, <<"Expression">>, <<"FloorDiv">>, <<"For">>, <<"FormattedValue">>,
-        <<"FunctionDef">>, <<"FunctionType">>, <<"GeneratorExp">>, <<"Global">>, <<"Gt">>,
-        <<"GtE">>, <<"If">>, <<"IfExp">>, <<"Import">>, <<"ImportFrom">>, <<"In">>,
-        <<"Interactive">>, <<"Invert">>, <<"Is">>, <<"IsNot">>, <<"JoinedStr">>, <<"LShift">>,
-        <<"Lambda">>, <<"List">>, <<"ListComp">>, <<"Load">>, <<"Lt">>, <<"LtE">>,
-        <<"MatMult">>, <<"Match">>, <<"MatchAs">>, <<"MatchClass">>, <<"MatchMapping">>,
-        <<"MatchOr">>, <<"MatchSequence">>, <<"MatchSingleton">>, <<"MatchStar">>,
-        <<"MatchValue">>, <<"Mod">>, <<"Module">>, <<"Mult">>, <<"Name">>, <<"NamedExpr">>,
-        <<"NameConstant">>, <<"Nonlocal">>, <<"Not">>, <<"NotEq">>, <<"NotIn">>, <<"Num">>, <<"Or">>, <<"ParamSpec">>,
-        <<"Pass">>, <<"Pow">>, <<"RShift">>, <<"Raise">>, <<"Return">>, <<"Set">>,
-        <<"SetComp">>, <<"Slice">>, <<"Starred">>, <<"Store">>, <<"Str">>, <<"Sub">>, <<"Subscript">>,
-        <<"Try">>, <<"TryStar">>, <<"Tuple">>, <<"TypeAlias">>, <<"TypeIgnore">>, <<"TypeVar">>,
-        <<"TypeVarTuple">>, <<"UAdd">>, <<"USub">>, <<"UnaryOp">>, <<"While">>, <<"With">>,
-        <<"Yield">>, <<"YieldFrom">>, <<"alias">>, <<"arg">>, <<"arguments">>, <<"boolop">>,
-        <<"cmpop">>, <<"comprehension">>, <<"excepthandler">>, <<"expr">>, <<"expr_context">>,
-        <<"keyword">>, <<"match_case">>, <<"mod">>, <<"operator">>, <<"pattern">>, <<"stmt">>,
-        <<"type_ignore">>, <<"type_param">>, <<"unaryop">>, <<"withitem">>
+        <<"Add">>,
+        <<"And">>,
+        <<"AnnAssign">>,
+        <<"Assert">>,
+        <<"Assign">>,
+        <<"AsyncFor">>,
+        <<"AsyncFunctionDef">>,
+        <<"AsyncWith">>,
+        <<"Attribute">>,
+        <<"AugAssign">>,
+        <<"Await">>,
+        <<"BinOp">>,
+        <<"BitAnd">>,
+        <<"BitOr">>,
+        <<"BitXor">>,
+        <<"BoolOp">>,
+        <<"Break">>,
+        <<"Bytes">>,
+        <<"Call">>,
+        <<"ClassDef">>,
+        <<"Compare">>,
+        <<"Constant">>,
+        <<"Continue">>,
+        <<"Del">>,
+        <<"Delete">>,
+        <<"Dict">>,
+        <<"DictComp">>,
+        <<"Div">>,
+        <<"Eq">>,
+        <<"ExceptHandler">>,
+        <<"Ellipsis">>,
+        <<"Expr">>,
+        <<"Expression">>,
+        <<"FloorDiv">>,
+        <<"For">>,
+        <<"FormattedValue">>,
+        <<"FunctionDef">>,
+        <<"FunctionType">>,
+        <<"GeneratorExp">>,
+        <<"Global">>,
+        <<"Gt">>,
+        <<"GtE">>,
+        <<"If">>,
+        <<"IfExp">>,
+        <<"Import">>,
+        <<"ImportFrom">>,
+        <<"In">>,
+        <<"Interactive">>,
+        <<"Invert">>,
+        <<"Is">>,
+        <<"IsNot">>,
+        <<"JoinedStr">>,
+        <<"LShift">>,
+        <<"Lambda">>,
+        <<"List">>,
+        <<"ListComp">>,
+        <<"Load">>,
+        <<"Lt">>,
+        <<"LtE">>,
+        <<"MatMult">>,
+        <<"Match">>,
+        <<"MatchAs">>,
+        <<"MatchClass">>,
+        <<"MatchMapping">>,
+        <<"MatchOr">>,
+        <<"MatchSequence">>,
+        <<"MatchSingleton">>,
+        <<"MatchStar">>,
+        <<"MatchValue">>,
+        <<"Mod">>,
+        <<"Module">>,
+        <<"Mult">>,
+        <<"Name">>,
+        <<"NamedExpr">>,
+        <<"NameConstant">>,
+        <<"Nonlocal">>,
+        <<"Not">>,
+        <<"NotEq">>,
+        <<"NotIn">>,
+        <<"Num">>,
+        <<"Or">>,
+        <<"ParamSpec">>,
+        <<"Pass">>,
+        <<"Pow">>,
+        <<"RShift">>,
+        <<"Raise">>,
+        <<"Return">>,
+        <<"Set">>,
+        <<"SetComp">>,
+        <<"Slice">>,
+        <<"Starred">>,
+        <<"Store">>,
+        <<"Str">>,
+        <<"Sub">>,
+        <<"Subscript">>,
+        <<"Try">>,
+        <<"TryStar">>,
+        <<"Tuple">>,
+        <<"TypeAlias">>,
+        <<"TypeIgnore">>,
+        <<"TypeVar">>,
+        <<"TypeVarTuple">>,
+        <<"UAdd">>,
+        <<"USub">>,
+        <<"UnaryOp">>,
+        <<"While">>,
+        <<"With">>,
+        <<"Yield">>,
+        <<"YieldFrom">>,
+        <<"alias">>,
+        <<"arg">>,
+        <<"arguments">>,
+        <<"boolop">>,
+        <<"cmpop">>,
+        <<"comprehension">>,
+        <<"excepthandler">>,
+        <<"expr">>,
+        <<"expr_context">>,
+        <<"keyword">>,
+        <<"match_case">>,
+        <<"mod">>,
+        <<"operator">>,
+        <<"pattern">>,
+        <<"stmt">>,
+        <<"type_ignore">>,
+        <<"type_param">>,
+        <<"unaryop">>,
+        <<"withitem">>
     ],
     Classes = maps:from_list([{Name, ast_class(Name, [AST])} || Name <- ClassNames]),
-    maps:merge(#{
-        <<"__name__">> => <<"_ast">>,
-        <<"__file__">> => builtin,
-        <<"__package__">> => <<"">>,
-        <<"__path__">> => none,
-        <<"AST">> => AST,
-        <<"PyCF_ONLY_AST">> => 1024,
-        <<"PyCF_TYPE_COMMENTS">> => 4096,
-        <<"PyCF_ALLOW_TOP_LEVEL_AWAIT">> => 8192,
-        <<"PyCF_OPTIMIZED_AST">> => 33792
-    }, Classes).
+    maps:merge(
+        #{
+            <<"__name__">> => <<"_ast">>,
+            <<"__file__">> => builtin,
+            <<"__package__">> => <<"">>,
+            <<"__path__">> => none,
+            <<"AST">> => AST,
+            <<"PyCF_ONLY_AST">> => 1024,
+            <<"PyCF_TYPE_COMMENTS">> => 4096,
+            <<"PyCF_ALLOW_TOP_LEVEL_AWAIT">> => 8192,
+            <<"PyCF_OPTIMIZED_AST">> => 33792
+        },
+        Classes
+    ).
 
 ast_class(Name, Bases) ->
     pyrlang_object:new_class(Name, Bases, #{
@@ -6742,7 +7512,8 @@ weakref_reference_type() ->
             Class;
         Class ->
             try pyrlang_heap:type(Class) of
-                class -> Class;
+                class ->
+                    Class;
                 _Other ->
                     erlang:erase(Key),
                     weakref_reference_type()
@@ -6797,18 +7568,30 @@ weakref_finalize_new([Obj, Func | Args], KwArgs) ->
     }),
     Instance = pyrlang_object:instantiate(weakref_finalize_type()),
     ok = pyrlang_object:set_attr(Instance, <<"__pyrlang_finalize_key__">>, Key),
-    ok = pyrlang_object:set_attr(Instance, <<"__call__">>, {py_native_varargs, fun
-        ([]) -> weakref_finalize_call(Key);
-        (CallArgs) -> erlang:error({arity_error, {weakref_finalize_call, length(CallArgs)}})
-    end}),
-    ok = pyrlang_object:set_attr(Instance, <<"detach">>, {py_native_varargs, fun
-        ([]) -> weakref_finalize_detach(Key);
-        (CallArgs) -> erlang:error({arity_error, {weakref_finalize_detach, length(CallArgs)}})
-    end}),
-    ok = pyrlang_object:set_attr(Instance, <<"peek">>, {py_native_varargs, fun
-        ([]) -> weakref_finalize_peek(Key);
-        (CallArgs) -> erlang:error({arity_error, {weakref_finalize_peek, length(CallArgs)}})
-    end}),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"__call__">>,
+        {py_native_varargs, fun
+            ([]) -> weakref_finalize_call(Key);
+            (CallArgs) -> erlang:error({arity_error, {weakref_finalize_call, length(CallArgs)}})
+        end}
+    ),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"detach">>,
+        {py_native_varargs, fun
+            ([]) -> weakref_finalize_detach(Key);
+            (CallArgs) -> erlang:error({arity_error, {weakref_finalize_detach, length(CallArgs)}})
+        end}
+    ),
+    ok = pyrlang_object:set_attr(
+        Instance,
+        <<"peek">>,
+        {py_native_varargs, fun
+            ([]) -> weakref_finalize_peek(Key);
+            (CallArgs) -> erlang:error({arity_error, {weakref_finalize_peek, length(CallArgs)}})
+        end}
+    ),
     ok = pyrlang_object:set_attr(Instance, <<"atexit">>, true),
     Instance;
 weakref_finalize_new(Args, _KwArgs) ->
@@ -6850,8 +7633,7 @@ weakref_finalize_key(_Other) ->
 weakref_finalize_call(Key) ->
     case weakref_finalize_take(Key) of
         none -> none;
-        {_Obj, Func, Args, KwArgs} ->
-            pyrlang_eval:call(Func, {call_args, Args, KwArgs})
+        {_Obj, Func, Args, KwArgs} -> pyrlang_eval:call(Func, {call_args, Args, KwArgs})
     end.
 
 weakref_finalize_detach(Key) ->
@@ -6923,13 +7705,27 @@ threading_thread_dunder_new(Args, _KwArgs) ->
 threading_thread_init([Self | Args], KwArgs0) ->
     ensure_allowed_thread_kwargs(KwArgs0),
     case length(Args) =< 5 of
-        true -> ok;
-        false -> erlang:error({arity_error, {'threading.Thread.__init__', length(Args), maps:size(KwArgs0)}})
+        true ->
+            ok;
+        false ->
+            erlang:error(
+                {arity_error, {'threading.Thread.__init__', length(Args), maps:size(KwArgs0)}}
+            )
     end,
     Positional = [<<"group">>, <<"target">>, <<"name">>, <<"args">>, <<"kwargs">>],
-    case [Name || {Name, _Value} <- lists:zip(lists:sublist(Positional, length(Args)), Args), maps:is_key(Name, KwArgs0)] of
-        [] -> ok;
-        [Duplicate | _] -> erlang:error({type_error, {multiple_values_for_argument, 'threading.Thread.__init__', Duplicate}})
+    case
+        [
+            Name
+         || {Name, _Value} <- lists:zip(lists:sublist(Positional, length(Args)), Args),
+            maps:is_key(Name, KwArgs0)
+        ]
+    of
+        [] ->
+            ok;
+        [Duplicate | _] ->
+            erlang:error(
+                {type_error, {multiple_values_for_argument, 'threading.Thread.__init__', Duplicate}}
+            )
     end,
     Group = thread_arg(1, <<"group">>, Args, KwArgs0, none),
     case Group of
@@ -6939,7 +7735,9 @@ threading_thread_init([Self | Args], KwArgs0) ->
     Target = thread_arg(2, <<"target">>, Args, KwArgs0, none),
     Name = thread_arg(3, <<"name">>, Args, KwArgs0, <<"Thread">>),
     ThreadArgs = thread_args_list(thread_arg(4, <<"args">>, Args, KwArgs0, {})),
-    ThreadKwargs = thread_kwargs_map(thread_arg(5, <<"kwargs">>, Args, KwArgs0, pyrlang_heap:dict([]))),
+    ThreadKwargs = thread_kwargs_map(
+        thread_arg(5, <<"kwargs">>, Args, KwArgs0, pyrlang_heap:dict([]))
+    ),
     Daemon = maps:get(<<"daemon">>, KwArgs0, false),
     ok = pyrlang_object:set_attr(Self, <<"ident">>, none),
     ok = pyrlang_object:set_attr(Self, <<"native_id">>, none),
@@ -6954,7 +7752,9 @@ threading_thread_init(Args, _KwArgs) ->
     erlang:error({arity_error, {'threading.Thread.__init__', length(Args)}}).
 
 ensure_allowed_thread_kwargs(KwArgs) ->
-    Allowed = [<<"group">>, <<"target">>, <<"name">>, <<"args">>, <<"kwargs">>, <<"daemon">>, <<"context">>],
+    Allowed = [
+        <<"group">>, <<"target">>, <<"name">>, <<"args">>, <<"kwargs">>, <<"daemon">>, <<"context">>
+    ],
     case [Key || Key <- maps:keys(KwArgs), not lists:member(Key, Allowed)] of
         [] -> ok;
         [Unknown | _] -> erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
@@ -7064,7 +7864,8 @@ threading_lock_instance() ->
 threading_semaphore_new(Args, KwArgs0) ->
     {Value, KwArgs} =
         case maps:take(<<"value">>, KwArgs0) of
-            {KwValue, RestKwArgs} -> {KwValue, RestKwArgs};
+            {KwValue, RestKwArgs} ->
+                {KwValue, RestKwArgs};
             error ->
                 case Args of
                     [] -> {1, KwArgs0};
@@ -7073,22 +7874,41 @@ threading_semaphore_new(Args, KwArgs0) ->
                 end
         end,
     case maps:to_list(KwArgs) of
-        [] -> ok;
-        [{Unknown, _Value} | _] -> erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
+        [] ->
+            ok;
+        [{Unknown, _Value} | _] ->
+            erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
     end,
     case is_number(Value) andalso Value >= 0 of
-        true -> threading_semaphore_instance(Value);
-        false -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"semaphore initial value must be >= 0">>))
+        true ->
+            threading_semaphore_instance(Value);
+        false ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>),
+                    <<"semaphore initial value must be >= 0">>
+                )
+            )
     end.
 
 threading_semaphore_instance(Value) ->
     Key = {pyrlang_threading_semaphore, erlang:make_ref()},
     erlang:put(Key, Value),
     native_instance(<<"Semaphore">>, #{
-        <<"acquire">> => {py_native_call, fun(Args, KwArgs) -> threading_semaphore_acquire(Key, Args, KwArgs) end},
-        <<"release">> => {py_native_varargs, fun(Args) -> threading_semaphore_release(Key, Args) end},
-        <<"__enter__">> => fun() -> _ = threading_semaphore_acquire(Key, [], #{}), true end,
-        <<"__exit__">> => fun(_Type, _Value, _Traceback) -> _ = threading_semaphore_release(Key, []), false end
+        <<"acquire">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                threading_semaphore_acquire(Key, Args, KwArgs)
+            end},
+        <<"release">> =>
+            {py_native_varargs, fun(Args) -> threading_semaphore_release(Key, Args) end},
+        <<"__enter__">> => fun() ->
+            _ = threading_semaphore_acquire(Key, [], #{}),
+            true
+        end,
+        <<"__exit__">> => fun(_Type, _Value, _Traceback) ->
+            _ = threading_semaphore_release(Key, []),
+            false
+        end
     }).
 
 threading_semaphore_acquire(Key, Args0, KwArgs0) ->
@@ -7151,7 +7971,11 @@ threading_semaphore_release(Key, [N]) when is_number(N), N >= 1 ->
     erlang:put(Key, Count + N),
     none;
 threading_semaphore_release(_Key, [N]) when is_number(N) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"n must be one or more">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ValueError">>), <<"n must be one or more">>
+        )
+    );
 threading_semaphore_release(_Key, Args) ->
     erlang:error({arity_error, {threading_semaphore_release, length(Args)}}).
 
@@ -7166,8 +7990,14 @@ threading_event_instance() ->
     native_instance(<<"Event">>, #{
         <<"is_set">> => fun() -> threading_event_is_set(Key) end,
         <<"isSet">> => fun() -> threading_event_is_set(Key) end,
-        <<"set">> => fun() -> erlang:put(Key, true), none end,
-        <<"clear">> => fun() -> erlang:put(Key, false), none end,
+        <<"set">> => fun() ->
+            erlang:put(Key, true),
+            none
+        end,
+        <<"clear">> => fun() ->
+            erlang:put(Key, false),
+            none
+        end,
         <<"wait">> => {py_native_varargs, fun(_Args) -> threading_event_is_set(Key) end}
     }).
 
@@ -7249,7 +8079,9 @@ importlib_reload(Args) ->
     erlang:error({arity_error, {reload, length(Args)}}).
 
 importlib_util_find_spec([Name], KwArgs) ->
-    importlib_util_find_spec_args(Name, maps:get(<<"package">>, KwArgs, none), maps:without([<<"package">>], KwArgs));
+    importlib_util_find_spec_args(
+        Name, maps:get(<<"package">>, KwArgs, none), maps:without([<<"package">>], KwArgs)
+    );
 importlib_util_find_spec([Name, Package], KwArgs) ->
     importlib_util_find_spec_args(Name, Package, KwArgs);
 importlib_util_find_spec(Args, _KwArgs) ->
@@ -7289,8 +8121,12 @@ importlib_module_spec(Name, Origin, IsPackage) ->
 importlib_module_spec(Name, Origin, IsPackage, Loader) ->
     Locations =
         case IsPackage of
-            true -> pyrlang_heap:list([unicode:characters_to_binary(filename:dirname(binary_to_list(Origin)))]);
-            false -> none
+            true ->
+                pyrlang_heap:list([
+                    unicode:characters_to_binary(filename:dirname(binary_to_list(Origin)))
+                ]);
+            false ->
+                none
         end,
     native_instance(<<"ModuleSpec">>, #{
         <<"name">> => Name,
@@ -7310,7 +8146,9 @@ importlib_module_loader(Origin, IsPackage) ->
             false -> none
         end,
     native_instance(<<"SourceFileLoader">>, #{
-        <<"get_resource_reader">> => fun(_PackageName) -> importlib_resource_reader(ResourceRoot) end
+        <<"get_resource_reader">> => fun(_PackageName) ->
+            importlib_resource_reader(ResourceRoot)
+        end
     }).
 
 importlib_resource_reader(none) ->
@@ -7340,7 +8178,11 @@ importlib_resource_open(ResourceRoot, Name) ->
     pyrlang_builtins:open([unicode:characters_to_binary(Path), <<"rb">>]).
 
 resolve_import_name(<<".", _/binary>>, none) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ImportError">>), <<"relative import requires package">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ImportError">>), <<"relative import requires package">>
+        )
+    );
 resolve_import_name(<<".", _/binary>> = Name, Package0) ->
     Package = normalize_name(Package0),
     {Level, Rest} = leading_dot_count(Name, 0),
@@ -7356,14 +8198,25 @@ resolve_import_name(<<".", _/binary>> = Name, Package0) ->
                 end,
             join_binary(BaseParts ++ RestParts, <<".">>);
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ImportError">>), <<"relative import beyond top-level package">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ImportError">>),
+                    <<"relative import beyond top-level package">>
+                )
+            )
     end;
 resolve_import_name(Name, _Package) ->
     Name.
 
 timedelta_type() ->
-    Class = pyrlang_object:new_class(<<"timedelta">>, [maps:get(<<"object">>, pyrlang_builtins:env())], #{}),
-    ok = pyrlang_object:set_class_attr(Class, <<"__pyrlang_builtin_constructor__">>, {py_native_call, fun(Args, KwArgs) -> timedelta_new(Class, Args, KwArgs) end}),
+    Class = pyrlang_object:new_class(
+        <<"timedelta">>, [maps:get(<<"object">>, pyrlang_builtins:env())], #{}
+    ),
+    ok = pyrlang_object:set_class_attr(
+        Class,
+        <<"__pyrlang_builtin_constructor__">>,
+        {py_native_call, fun(Args, KwArgs) -> timedelta_new(Class, Args, KwArgs) end}
+    ),
     Class.
 
 tzinfo_type() ->
@@ -7375,7 +8228,11 @@ tzinfo_type() ->
 
 timezone_type(TzInfo, Timedelta) ->
     Class = pyrlang_object:new_class(<<"timezone">>, [TzInfo], #{}),
-    ok = pyrlang_object:set_class_attr(Class, <<"__pyrlang_builtin_constructor__">>, {py_native_call, fun(Args, KwArgs) -> timezone_new(Class, Timedelta, Args, KwArgs) end}),
+    ok = pyrlang_object:set_class_attr(
+        Class,
+        <<"__pyrlang_builtin_constructor__">>,
+        {py_native_call, fun(Args, KwArgs) -> timezone_new(Class, Timedelta, Args, KwArgs) end}
+    ),
     Class.
 
 timedelta_new(Class, Args, KwArgs) ->
@@ -7396,12 +8253,12 @@ timedelta_new(Class, Args, KwArgs) ->
         [] ->
             Total =
                 number_value(maps:get(<<"weeks">>, Values)) * 604800 +
-                number_value(maps:get(<<"days">>, Values)) * 86400 +
-                number_value(maps:get(<<"hours">>, Values)) * 3600 +
-                number_value(maps:get(<<"minutes">>, Values)) * 60 +
-                number_value(maps:get(<<"seconds">>, Values)) +
-                number_value(maps:get(<<"milliseconds">>, Values)) / 1000 +
-                number_value(maps:get(<<"microseconds">>, Values)) / 1000000,
+                    number_value(maps:get(<<"days">>, Values)) * 86400 +
+                    number_value(maps:get(<<"hours">>, Values)) * 3600 +
+                    number_value(maps:get(<<"minutes">>, Values)) * 60 +
+                    number_value(maps:get(<<"seconds">>, Values)) +
+                    number_value(maps:get(<<"milliseconds">>, Values)) / 1000 +
+                    number_value(maps:get(<<"microseconds">>, Values)) / 1000000,
             timedelta_value(Class, Total);
         _ ->
             erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
@@ -7510,7 +8367,8 @@ datetime_type() ->
         [date_type()],
         fun(Class) ->
             #{
-                <<"__pyrlang_builtin_constructor__">> => {py_native_varargs, fun(Args) -> datetime_new(Class, Args) end},
+                <<"__pyrlang_builtin_constructor__">> =>
+                    {py_native_varargs, fun(Args) -> datetime_new(Class, Args) end},
                 <<"fromisoformat">> => fun(Value) -> datetime_fromisoformat(Class, Value) end,
                 <<"now">> => {py_native_call, fun datetime_now/2},
                 <<"utcnow">> => fun() -> datetime_value(calendar:universal_time()) end
@@ -7525,7 +8383,8 @@ date_type() ->
         [maps:get(<<"object">>, pyrlang_builtins:env())],
         fun(Class) ->
             #{
-                <<"__pyrlang_builtin_constructor__">> => {py_native_varargs, fun(Args) -> date_new(Class, Args) end},
+                <<"__pyrlang_builtin_constructor__">> =>
+                    {py_native_varargs, fun(Args) -> date_new(Class, Args) end},
                 <<"fromisoformat">> => fun(Value) -> date_fromisoformat(Class, Value) end,
                 <<"fromordinal">> => fun(Ordinal) ->
                     date_value(Class, calendar:gregorian_days_to_date(Ordinal + 365))
@@ -7545,7 +8404,8 @@ time_type() ->
         [maps:get(<<"object">>, pyrlang_builtins:env())],
         fun(Class) ->
             #{
-                <<"__pyrlang_builtin_constructor__">> => {py_native_varargs, fun(Args) -> time_new(Class, Args) end},
+                <<"__pyrlang_builtin_constructor__">> =>
+                    {py_native_varargs, fun(Args) -> time_new(Class, Args) end},
                 <<"fromisoformat">> => fun(Value) -> time_fromisoformat(Class, Value) end,
                 <<"__name__">> => <<"TimeType">>
             }
@@ -7556,12 +8416,16 @@ datetime_cached_class(Key, Name, Bases, AttrsFun) ->
     case erlang:get(Key) of
         undefined ->
             Class = pyrlang_object:new_class(Name, Bases, #{}),
-            maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_class_attr(Class, Attr, Value) end, AttrsFun(Class)),
+            maps:foreach(
+                fun(Attr, Value) -> ok = pyrlang_object:set_class_attr(Class, Attr, Value) end,
+                AttrsFun(Class)
+            ),
             erlang:put(Key, Class),
             Class;
         Class ->
             try pyrlang_heap:type(Class) of
-                class -> Class;
+                class ->
+                    Class;
                 _Other ->
                     erlang:erase(Key),
                     datetime_cached_class(Key, Name, Bases, AttrsFun)
@@ -7631,7 +8495,9 @@ parse_iso_time(Text) ->
     invalid_isoformat(Text).
 
 invalid_isoformat(Text) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_isoformat, Text})).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_isoformat, Text})
+    ).
 
 datetime_now([], KwArgs) ->
     Tz = maps:get(<<"tz">>, KwArgs, none),
@@ -7649,14 +8515,18 @@ datetime_value(Class, {{Year, Month, Day}, {Hour, Minute, Second}}) ->
 
 datetime_value(Class, {{Year, Month, Day}, {Hour, Minute, Second}}, Tz) ->
     DateTime = {{Year, Month, Day}, {Hour, Minute, Second}},
-    Iso = iolist_to_binary(io_lib:format(
-        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
-        [Year, Month, Day, Hour, Minute, Second]
-    )),
-    Str = iolist_to_binary(io_lib:format(
-        "~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B",
-        [Year, Month, Day, Hour, Minute, Second]
-    )),
+    Iso = iolist_to_binary(
+        io_lib:format(
+            "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
+            [Year, Month, Day, Hour, Minute, Second]
+        )
+    ),
+    Str = iolist_to_binary(
+        io_lib:format(
+            "~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B",
+            [Year, Month, Day, Hour, Minute, Second]
+        )
+    ),
     Date = {Year, Month, Day},
     native_instance(Class, <<"Datetime">>, #{
         <<"year">> => Year,
@@ -7672,8 +8542,15 @@ datetime_value(Class, {{Year, Month, Day}, {Hour, Minute, Second}}, Tz) ->
         <<"astimezone">> => fun(NewTz) -> datetime_value(Class, DateTime, NewTz) end,
         <<"date">> => fun() -> date_value(Date) end,
         <<"isoformat">> => fun() -> Iso end,
-        <<"replace">> => {py_native_call, fun(Args, KwArgs) -> datetime_replace(Class, DateTime, Tz, Args, KwArgs) end},
-        <<"strftime">> => fun(Format) -> time_format(normalize_name(Format), time_struct_tuple({Date, {Hour, Minute, Second}}, false)) end,
+        <<"replace">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                datetime_replace(Class, DateTime, Tz, Args, KwArgs)
+            end},
+        <<"strftime">> => fun(Format) ->
+            time_format(
+                normalize_name(Format), time_struct_tuple({Date, {Hour, Minute, Second}}, false)
+            )
+        end,
         <<"timetuple">> => fun() -> time_struct_tuple({Date, {Hour, Minute, Second}}, false) end,
         <<"toordinal">> => fun() -> calendar:date_to_gregorian_days(Date) - 365 end,
         <<"utcoffset">> => fun() -> datetime_utcoffset(Tz) end,
@@ -7695,7 +8572,7 @@ datetime_subtract(Class, DateTime, Tz, Other) ->
                 {ok, OtherDateTime} ->
                     Diff =
                         calendar:datetime_to_gregorian_seconds(DateTime) -
-                        calendar:datetime_to_gregorian_seconds(OtherDateTime),
+                            calendar:datetime_to_gregorian_seconds(OtherDateTime),
                     timedelta_value(timedelta_type(), Diff);
                 error ->
                     not_implemented
@@ -7758,7 +8635,9 @@ date_value(Class, {Year, Month, Day}) ->
         <<"day">> => Day,
         <<"__str__">> => fun() -> Iso end,
         <<"isoformat">> => fun() -> Iso end,
-        <<"strftime">> => fun(Format) -> time_format(normalize_name(Format), time_struct_tuple({Date, {0, 0, 0}}, false)) end,
+        <<"strftime">> => fun(Format) ->
+            time_format(normalize_name(Format), time_struct_tuple({Date, {0, 0, 0}}, false))
+        end,
         <<"timetuple">> => fun() -> time_struct_tuple({Date, {0, 0, 0}}, false) end,
         <<"toordinal">> => fun() -> calendar:date_to_gregorian_days(Date) - 365 end,
         <<"weekday">> => fun() -> calendar:day_of_the_week(Date) - 1 end
@@ -7772,7 +8651,12 @@ time_value(Class, {Hour, Minute, Second}) ->
         <<"second">> => Second,
         <<"__str__">> => fun() -> Iso end,
         <<"isoformat">> => fun() -> Iso end,
-        <<"strftime">> => fun(Format) -> time_format(normalize_name(Format), time_struct_tuple({{1970, 1, 1}, {Hour, Minute, Second}}, false)) end
+        <<"strftime">> => fun(Format) ->
+            time_format(
+                normalize_name(Format),
+                time_struct_tuple({{1970, 1, 1}, {Hour, Minute, Second}}, false)
+            )
+        end
     }).
 
 decimal_new([Value], KwArgs) when map_size(KwArgs) =:= 0 ->
@@ -7813,7 +8697,8 @@ decimal_instance(Number) ->
         <<"__int__">> => fun() -> trunc(Number) end,
         <<"__add__">> => fun(Other) -> decimal_instance(Number + decimal_object_number(Other)) end,
         <<"__sub__">> => fun(Other) -> decimal_instance(Number - decimal_object_number(Other)) end,
-        <<"quantize">> => {py_native_call, fun(Args, KwArgs) -> decimal_quantize(Number, Args, KwArgs) end},
+        <<"quantize">> =>
+            {py_native_call, fun(Args, KwArgs) -> decimal_quantize(Number, Args, KwArgs) end},
         <<"scaleb">> => {py_native_varargs, fun(Args) -> decimal_scaleb(Number, Args) end}
     }).
 
@@ -7832,7 +8717,11 @@ decimal_number({py_ref, _} = Value) ->
     decimal_object_number(Value).
 
 decimal_quantize(Number, [Exponent], KwArgs) ->
-    decimal_quantize(Number, [Exponent, maps:get(<<"rounding">>, KwArgs, <<"ROUND_HALF_EVEN">>)], maps:without([<<"rounding">>], KwArgs));
+    decimal_quantize(
+        Number,
+        [Exponent, maps:get(<<"rounding">>, KwArgs, <<"ROUND_HALF_EVEN">>)],
+        maps:without([<<"rounding">>], KwArgs)
+    );
 decimal_quantize(Number, [_Exponent, Rounding], KwArgs) when map_size(KwArgs) =:= 0 ->
     decimal_instance(decimal_round(Number, Rounding));
 decimal_quantize(Number, [_Exponent, Rounding, _Context], KwArgs) when map_size(KwArgs) =:= 0 ->
@@ -7883,7 +8772,8 @@ decimal_floor(Number) ->
     end.
 
 binary_to_floatable(Value) ->
-    try binary_to_float(Value)
+    try
+        binary_to_float(Value)
     catch
         error:badarg -> binary_to_integer(Value) * 1.0
     end.
@@ -7996,16 +8886,17 @@ psycopg2_quoted_string_type() ->
 
 psycopg2_json_type() ->
     psycopg2_cached_type(psycopg2_json_type, <<"Json">>, #{
-        <<"__init__">> => {py_native_varargs, fun
-            ([Self, Value]) ->
-                ok = pyrlang_object:set_attr(Self, <<"adapted">>, Value),
-                none;
-            ([Self, Value, _Dumps]) ->
-                ok = pyrlang_object:set_attr(Self, <<"adapted">>, Value),
-                none;
-            (Args) ->
-                erlang:error({arity_error, {json, length(Args)}})
-        end},
+        <<"__init__">> =>
+            {py_native_varargs, fun
+                ([Self, Value]) ->
+                    ok = pyrlang_object:set_attr(Self, <<"adapted">>, Value),
+                    none;
+                ([Self, Value, _Dumps]) ->
+                    ok = pyrlang_object:set_attr(Self, <<"adapted">>, Value),
+                    none;
+                (Args) ->
+                    erlang:error({arity_error, {json, length(Args)}})
+            end},
         <<"getquoted">> => fun(Self) ->
             Value = pyrlang_object:get_attr(Self, <<"adapted">>),
             unicode:characters_to_binary(postgres_quote_value(Value))
@@ -8018,13 +8909,19 @@ psycopg2_simple_type(Name) ->
 psycopg2_cached_type(Key, Name, Attrs) ->
     case erlang:get(Key) of
         undefined ->
-            Class = pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs),
+            Class = pyrlang_object:new_class(
+                Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs
+            ),
             erlang:put(Key, Class),
             Class;
         Class ->
             try
-                case pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name of
-                    true -> Class;
+                case
+                    pyrlang_heap:type(Class) =:= class andalso
+                        pyrlang_object:class_name(Class) =:= Name
+                of
+                    true ->
+                        Class;
                     false ->
                         erlang:erase(Key),
                         psycopg2_cached_type(Key, Name, Attrs)
@@ -8051,7 +8948,10 @@ psycopg2_connect(Args, KwArgs) ->
 postgres_connection_instance(Pid, CursorFactory) ->
     native_instance(psycopg2_connection_type(), <<"Connection">>, #{
         <<"__pyrlang_unsendable__">> => psycopg2_connection,
-        <<"cursor">> => {py_native_call, fun(Args, KwArgs) -> postgres_connection_cursor(Pid, CursorFactory, Args, KwArgs) end},
+        <<"cursor">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                postgres_connection_cursor(Pid, CursorFactory, Args, KwArgs)
+            end},
         <<"commit">> => fun() -> none end,
         <<"rollback">> => fun() -> none end,
         <<"close">> => fun() ->
@@ -8074,7 +8974,13 @@ postgres_connection_info() ->
     }).
 
 postgres_connection_cursor(Pid, DefaultFactory, Args, KwArgs) ->
-    case maps:keys(maps:without([<<"cursor_factory">>, <<"name">>, <<"scrollable">>, <<"withhold">>], KwArgs)) of
+    case
+        maps:keys(
+            maps:without(
+                [<<"cursor_factory">>, <<"name">>, <<"scrollable">>, <<"withhold">>], KwArgs
+            )
+        )
+    of
         [] ->
             ok;
         Extra ->
@@ -8118,7 +9024,9 @@ postgres_cursor_execute(Cursor, [Sql, Params]) ->
     ParamList = postgres_params(Params),
     BoundSql = pyrlang_postgres:mogrify(SqlText, ParamList),
     try
-        {Rows0, RowCount, _Output} = pyrlang_postgres:execute(postgres_cursor_pid(Cursor), SqlText, ParamList),
+        {Rows0, RowCount, _Output} = pyrlang_postgres:execute(
+            postgres_cursor_pid(Cursor), SqlText, ParamList
+        ),
         Rows = [list_to_tuple(Row) || Row <- Rows0],
         ok = pyrlang_heap:set_data(postgres_cursor_rows_ref(Cursor), Rows),
         ok = pyrlang_object:set_attr(Cursor, <<"rowcount">>, RowCount),
@@ -8142,7 +9050,9 @@ postgres_cursor_method_mogrify(Args) ->
     erlang:error({arity_error, {postgres_cursor_mogrify, length(Args)}}).
 
 postgres_cursor_method_fetchmany([Cursor]) ->
-    sqlite_cursor_fetchmany(postgres_cursor_rows_ref(Cursor), pyrlang_object:get_attr(Cursor, <<"arraysize">>));
+    sqlite_cursor_fetchmany(
+        postgres_cursor_rows_ref(Cursor), pyrlang_object:get_attr(Cursor, <<"arraysize">>)
+    );
 postgres_cursor_method_fetchmany([Cursor, Size]) ->
     sqlite_cursor_fetchmany(postgres_cursor_rows_ref(Cursor), Size);
 postgres_cursor_method_fetchmany(Args) ->
@@ -8262,12 +9172,15 @@ sqlite3_row_type() ->
 sqlite3_cached_type(Key, Name, Attrs) ->
     case erlang:get(Key) of
         undefined ->
-            Class = pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs),
+            Class = pyrlang_object:new_class(
+                Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs
+            ),
             erlang:put(Key, Class),
             Class;
         Class ->
             try pyrlang_heap:type(Class) of
-                class -> Class;
+                class ->
+                    Class;
                 _Other ->
                     erlang:erase(Key),
                     sqlite3_cached_type(Key, Name, Attrs)
@@ -8295,8 +9208,14 @@ sqlite3_connect([], KwArgs) ->
     end;
 sqlite3_connect([Path], KwArgs0) ->
     Allowed = [
-        <<"timeout">>, <<"detect_types">>, <<"isolation_level">>, <<"check_same_thread">>,
-        <<"factory">>, <<"cached_statements">>, <<"uri">>, <<"autocommit">>
+        <<"timeout">>,
+        <<"detect_types">>,
+        <<"isolation_level">>,
+        <<"check_same_thread">>,
+        <<"factory">>,
+        <<"cached_statements">>,
+        <<"uri">>,
+        <<"autocommit">>
     ],
     case maps:keys(maps:without(Allowed, KwArgs0)) of
         [] -> sqlite_connection_instance(pyrlang_sqlite:connect(normalize_name(Path)));
@@ -8309,7 +9228,8 @@ sqlite_connection_instance(Pid) ->
     native_instance(sqlite3_connection_type(), <<"Connection">>, #{
         <<"__pyrlang_unsendable__">> => sqlite3_connection,
         <<"execute">> => {py_native_varargs, fun(Args) -> sqlite_connection_execute(Pid, Args) end},
-        <<"cursor">> => {py_native_call, fun(Args, KwArgs) -> sqlite_connection_cursor(Pid, Args, KwArgs) end},
+        <<"cursor">> =>
+            {py_native_call, fun(Args, KwArgs) -> sqlite_connection_cursor(Pid, Args, KwArgs) end},
         <<"create_function">> => {py_native_call, fun(_Args, _KwArgs) -> none end},
         <<"create_aggregate">> => {py_native_varargs, fun(_Args) -> none end},
         <<"commit">> => fun() ->
@@ -8361,14 +9281,18 @@ sqlite_cursor_instance(Pid, Class) ->
 sqlite_cursor_method_execute([Cursor, Sql]) ->
     sqlite_cursor_execute(Cursor, sqlite_cursor_pid(Cursor), sqlite_cursor_rows_ref(Cursor), [Sql]);
 sqlite_cursor_method_execute([Cursor, Sql, Params]) ->
-    sqlite_cursor_execute(Cursor, sqlite_cursor_pid(Cursor), sqlite_cursor_rows_ref(Cursor), [Sql, Params]);
+    sqlite_cursor_execute(Cursor, sqlite_cursor_pid(Cursor), sqlite_cursor_rows_ref(Cursor), [
+        Sql, Params
+    ]);
 sqlite_cursor_method_execute(Args) ->
     erlang:error({arity_error, {sqlite_cursor_execute, length(Args)}}).
 
 sqlite_cursor_method_executemany([Cursor, Sql, ParamList]) ->
     lists:foreach(
         fun(Params) ->
-            _ = sqlite_cursor_execute(Cursor, sqlite_cursor_pid(Cursor), sqlite_cursor_rows_ref(Cursor), [Sql, Params])
+            _ = sqlite_cursor_execute(
+                Cursor, sqlite_cursor_pid(Cursor), sqlite_cursor_rows_ref(Cursor), [Sql, Params]
+            )
         end,
         pyrlang_iter:values(ParamList)
     ),
@@ -8429,7 +9353,9 @@ sqlite_cursor_fetchone(RowsRef) ->
     end.
 
 sqlite_cursor_method_fetchmany([Cursor]) ->
-    sqlite_cursor_fetchmany(sqlite_cursor_rows_ref(Cursor), pyrlang_object:get_attr(Cursor, <<"arraysize">>));
+    sqlite_cursor_fetchmany(
+        sqlite_cursor_rows_ref(Cursor), pyrlang_object:get_attr(Cursor, <<"arraysize">>)
+    );
 sqlite_cursor_method_fetchmany([Cursor, Size]) ->
     sqlite_cursor_fetchmany(sqlite_cursor_rows_ref(Cursor), Size);
 sqlite_cursor_method_fetchmany(Args) ->
@@ -8463,10 +9389,10 @@ sqlite_params(List) when is_list(List) ->
 sqlite_is_query(Sql) ->
     Trimmed = string:trim(binary_to_list(Sql)),
     Lower = string:lowercase(Trimmed),
-    lists:prefix("select", Lower)
-        orelse lists:prefix("pragma", Lower)
-        orelse lists:prefix("with", Lower)
-        orelse string:str(Lower, " returning ") > 0.
+    lists:prefix("select", Lower) orelse
+        lists:prefix("pragma", Lower) orelse
+        lists:prefix("with", Lower) orelse
+        string:str(Lower, " returning ") > 0.
 
 logging_env() ->
     Handler = logging_class(<<"Handler">>),
@@ -8528,20 +9454,52 @@ logging_handlers_env() ->
         <<"DEFAULT_SOAP_LOGGING_PORT">> => 9023,
         <<"SYSLOG_UDP_PORT">> => 514,
         <<"SYSLOG_TCP_PORT">> => 514,
-        <<"BaseRotatingHandler">> => logging_cached_class(<<"BaseRotatingHandler">>, fun() -> logging_handler_subclass(<<"BaseRotatingHandler">>, FileHandler) end),
-        <<"RotatingFileHandler">> => logging_cached_class(<<"RotatingFileHandler">>, fun() -> logging_handler_subclass(<<"RotatingFileHandler">>, FileHandler) end),
-        <<"TimedRotatingFileHandler">> => logging_cached_class(<<"TimedRotatingFileHandler">>, fun() -> logging_handler_subclass(<<"TimedRotatingFileHandler">>, FileHandler) end),
-        <<"WatchedFileHandler">> => logging_cached_class(<<"WatchedFileHandler">>, fun() -> logging_handler_subclass(<<"WatchedFileHandler">>, FileHandler) end),
-        <<"SocketHandler">> => logging_cached_class(<<"SocketHandler">>, fun() -> logging_handler_subclass(<<"SocketHandler">>, Handler) end),
-        <<"DatagramHandler">> => logging_cached_class(<<"DatagramHandler">>, fun() -> logging_handler_subclass(<<"DatagramHandler">>, Handler) end),
-        <<"SysLogHandler">> => logging_cached_class(<<"SysLogHandler">>, fun() -> logging_handler_subclass(<<"SysLogHandler">>, Handler) end),
-        <<"SMTPHandler">> => logging_cached_class(<<"SMTPHandler">>, fun() -> logging_handler_subclass(<<"SMTPHandler">>, Handler) end),
-        <<"NTEventLogHandler">> => logging_cached_class(<<"NTEventLogHandler">>, fun() -> logging_handler_subclass(<<"NTEventLogHandler">>, Handler) end),
-        <<"HTTPHandler">> => logging_cached_class(<<"HTTPHandler">>, fun() -> logging_handler_subclass(<<"HTTPHandler">>, Handler) end),
-        <<"BufferingHandler">> => logging_cached_class(<<"BufferingHandler">>, fun() -> logging_handler_subclass(<<"BufferingHandler">>, Handler) end),
-        <<"MemoryHandler">> => logging_cached_class(<<"MemoryHandler">>, fun() -> logging_handler_subclass(<<"MemoryHandler">>, Handler) end),
-        <<"QueueHandler">> => logging_cached_class(<<"QueueHandler">>, fun() -> logging_handler_subclass(<<"QueueHandler">>, Handler) end),
-        <<"QueueListener">> => logging_cached_class(<<"QueueListener">>, fun() -> logging_plain_class(<<"QueueListener">>, #{<<"__init__">> => {py_native_call, fun logging_object_init/2}}) end)
+        <<"BaseRotatingHandler">> => logging_cached_class(<<"BaseRotatingHandler">>, fun() ->
+            logging_handler_subclass(<<"BaseRotatingHandler">>, FileHandler)
+        end),
+        <<"RotatingFileHandler">> => logging_cached_class(<<"RotatingFileHandler">>, fun() ->
+            logging_handler_subclass(<<"RotatingFileHandler">>, FileHandler)
+        end),
+        <<"TimedRotatingFileHandler">> => logging_cached_class(
+            <<"TimedRotatingFileHandler">>, fun() ->
+                logging_handler_subclass(<<"TimedRotatingFileHandler">>, FileHandler)
+            end
+        ),
+        <<"WatchedFileHandler">> => logging_cached_class(<<"WatchedFileHandler">>, fun() ->
+            logging_handler_subclass(<<"WatchedFileHandler">>, FileHandler)
+        end),
+        <<"SocketHandler">> => logging_cached_class(<<"SocketHandler">>, fun() ->
+            logging_handler_subclass(<<"SocketHandler">>, Handler)
+        end),
+        <<"DatagramHandler">> => logging_cached_class(<<"DatagramHandler">>, fun() ->
+            logging_handler_subclass(<<"DatagramHandler">>, Handler)
+        end),
+        <<"SysLogHandler">> => logging_cached_class(<<"SysLogHandler">>, fun() ->
+            logging_handler_subclass(<<"SysLogHandler">>, Handler)
+        end),
+        <<"SMTPHandler">> => logging_cached_class(<<"SMTPHandler">>, fun() ->
+            logging_handler_subclass(<<"SMTPHandler">>, Handler)
+        end),
+        <<"NTEventLogHandler">> => logging_cached_class(<<"NTEventLogHandler">>, fun() ->
+            logging_handler_subclass(<<"NTEventLogHandler">>, Handler)
+        end),
+        <<"HTTPHandler">> => logging_cached_class(<<"HTTPHandler">>, fun() ->
+            logging_handler_subclass(<<"HTTPHandler">>, Handler)
+        end),
+        <<"BufferingHandler">> => logging_cached_class(<<"BufferingHandler">>, fun() ->
+            logging_handler_subclass(<<"BufferingHandler">>, Handler)
+        end),
+        <<"MemoryHandler">> => logging_cached_class(<<"MemoryHandler">>, fun() ->
+            logging_handler_subclass(<<"MemoryHandler">>, Handler)
+        end),
+        <<"QueueHandler">> => logging_cached_class(<<"QueueHandler">>, fun() ->
+            logging_handler_subclass(<<"QueueHandler">>, Handler)
+        end),
+        <<"QueueListener">> => logging_cached_class(<<"QueueListener">>, fun() ->
+            logging_plain_class(<<"QueueListener">>, #{
+                <<"__init__">> => {py_native_call, fun logging_object_init/2}
+            })
+        end)
     }.
 
 logging_class(Name) ->
@@ -8556,7 +9514,8 @@ logging_cached_class(Name, Builder) ->
             Class;
         Class ->
             try pyrlang_heap:type(Class) of
-                class -> Class;
+                class ->
+                    Class;
                 _Other ->
                     NewClass = Builder(),
                     erlang:put(Key, NewClass),
@@ -8639,7 +9598,9 @@ create_logging_class(<<"PlaceHolder">>) ->
     }).
 
 logging_plain_class(Name, Attrs) ->
-    pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs#{<<"__module__">> => <<"logging">>}).
+    pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], Attrs#{
+        <<"__module__">> => <<"logging">>
+    }).
 
 logging_subclass(Name, Base, Attrs) ->
     pyrlang_object:new_class(Name, [Base], Attrs#{<<"__module__">> => <<"logging">>}).
@@ -8803,7 +9764,8 @@ logging_handler_format(_Args) ->
     <<>>.
 
 logging_handler_handle([Self, Record]) ->
-    try pyrlang_eval:call(pyrlang_object:get_attr(Self, <<"emit">>), [Record])
+    try
+        pyrlang_eval:call(pyrlang_object:get_attr(Self, <<"emit">>), [Record])
     catch
         _:_ -> none
     end,
@@ -8861,8 +9823,10 @@ logging_logger_has_handlers(_Args) ->
     false.
 
 logging_logger_effective_level([Self]) ->
-    try pyrlang_object:get_attr(Self, <<"level">>)
-    catch _:_ -> 0
+    try
+        pyrlang_object:get_attr(Self, <<"level">>)
+    catch
+        _:_ -> 0
     end;
 logging_logger_effective_level(_Args) ->
     0.
@@ -8929,7 +9893,8 @@ logging_record_message(Record) ->
         pyrlang_eval:call(pyrlang_object:get_attr(Record, <<"getMessage">>), [])
     catch
         _:_ ->
-            try normalize_name(pyrlang_object:get_attr(Record, <<"msg">>))
+            try
+                normalize_name(pyrlang_object:get_attr(Record, <<"msg">>))
             catch
                 _:_ -> <<>>
             end
@@ -8942,18 +9907,25 @@ pathlib_path_class() ->
     pathlib_cached_class(pyrlang_pathlib_path_class, <<"Path">>, [pathlib_purepath_class()]).
 
 os_pathlike_class() ->
-    pathlib_cached_class(pyrlang_os_pathlike_class, <<"PathLike">>, [maps:get(<<"object">>, pyrlang_builtins:env())]).
+    pathlib_cached_class(pyrlang_os_pathlike_class, <<"PathLike">>, [
+        maps:get(<<"object">>, pyrlang_builtins:env())
+    ]).
 
 pathlib_cached_class(Key, Name, Bases) ->
     case erlang:get(Key) of
         undefined ->
             Class = pyrlang_object:new_class(Name, Bases, #{}),
-            ok = pyrlang_object:set_class_attr(Class, <<"__pyrlang_builtin_constructor__">>, {py_native_call, fun(Args, KwArgs) -> pathlib_path_new(Class, Args, KwArgs) end}),
+            ok = pyrlang_object:set_class_attr(
+                Class,
+                <<"__pyrlang_builtin_constructor__">>,
+                {py_native_call, fun(Args, KwArgs) -> pathlib_path_new(Class, Args, KwArgs) end}
+            ),
             erlang:put(Key, Class),
             Class;
         Class ->
             try pyrlang_heap:type(Class) of
-                class -> Class;
+                class ->
+                    Class;
                 _Other ->
                     erlang:erase(Key),
                     pathlib_cached_class(Key, Name, Bases)
@@ -8967,8 +9939,12 @@ pathlib_cached_class(Key, Name, Bases) ->
 pathlib_path_new(Class, Args, KwArgs) when map_size(KwArgs) =:= 0 ->
     Path =
         case Args of
-            [] -> <<".">>;
-            _ -> unicode:characters_to_binary(filename:join([binary_to_list(normalize_name(Part)) || Part <- Args]))
+            [] ->
+                <<".">>;
+            _ ->
+                unicode:characters_to_binary(
+                    filename:join([binary_to_list(normalize_name(Part)) || Part <- Args])
+                )
         end,
     pathlib_path_instance(Class, Path);
 pathlib_path_new(_Class, Args, _KwArgs) ->
@@ -8981,8 +9957,12 @@ pathlib_path_instance(Class, Path, ParentDepth) ->
     PathList = binary_to_list(Path),
     Parent =
         case ParentDepth > 0 of
-            true -> pathlib_path_instance(Class, unicode:characters_to_binary(filename:dirname(PathList)), ParentDepth - 1);
-            false -> none
+            true ->
+                pathlib_path_instance(
+                    Class, unicode:characters_to_binary(filename:dirname(PathList)), ParentDepth - 1
+                );
+            false ->
+                none
         end,
     ClassName = pyrlang_object:class_name(Class),
     native_instance(Class, ClassName, #{
@@ -8997,15 +9977,22 @@ pathlib_path_instance(Class, Path, ParentDepth) ->
             ok = file:write_file(PathList, normalize_name(Content)),
             byte_size(normalize_name(Content))
         end,
-        <<"open">> => {py_native_call, fun(Args, KwArgs) -> pathlib_path_open(Path, Args, KwArgs) end},
+        <<"open">> =>
+            {py_native_call, fun(Args, KwArgs) -> pathlib_path_open(Path, Args, KwArgs) end},
         <<"exists">> => fun() ->
             filelib:is_file(PathList) orelse filelib:is_dir(PathList)
         end,
         <<"is_dir">> => fun() -> filelib:is_dir(PathList) end,
         <<"is_file">> => fun() -> filelib:is_file(PathList) end,
-        <<"joinpath">> => {py_native_varargs, fun(Parts) -> pathlib_path_join(Class, Path, Parts) end},
-        <<"resolve">> => {py_native_call, fun(Args, KwArgs) -> pathlib_path_resolve(Class, Path, Args, KwArgs) end},
-        <<"absolute">> => fun() -> pathlib_path_instance(Class, unicode:characters_to_binary(filename:absname(PathList))) end,
+        <<"joinpath">> =>
+            {py_native_varargs, fun(Parts) -> pathlib_path_join(Class, Path, Parts) end},
+        <<"resolve">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                pathlib_path_resolve(Class, Path, Args, KwArgs)
+            end},
+        <<"absolute">> => fun() ->
+            pathlib_path_instance(Class, unicode:characters_to_binary(filename:absname(PathList)))
+        end,
         <<"as_posix">> => fun() -> Path end,
         <<"is_absolute">> => fun() -> filename:pathtype(PathList) =:= absolute end,
         <<"__fspath__">> => fun() -> Path end,
@@ -9048,9 +10035,13 @@ pathlib_path_resolve(Class, Path, Args, KwArgs) ->
     Unknown = maps:keys(maps:without(Allowed, KwArgs)),
     case {Args, Unknown} of
         {[], []} ->
-            pathlib_path_instance(Class, unicode:characters_to_binary(filename:absname(binary_to_list(Path))));
+            pathlib_path_instance(
+                Class, unicode:characters_to_binary(filename:absname(binary_to_list(Path)))
+            );
         {[_Strict], []} ->
-            pathlib_path_instance(Class, unicode:characters_to_binary(filename:absname(binary_to_list(Path))));
+            pathlib_path_instance(
+                Class, unicode:characters_to_binary(filename:absname(binary_to_list(Path)))
+            );
         _ ->
             erlang:error({arity_error, {path_resolve, length(Args), maps:size(KwArgs)}})
     end.
@@ -9058,11 +10049,11 @@ pathlib_path_resolve(Class, Path, Args, KwArgs) ->
 http_status_class() ->
     Members = [
         {Name, http_status_instance(Name, Code, Phrase)}
-        || {Name, Code, Phrase} <- http_status_specs()
+     || {Name, Code, Phrase} <- http_status_specs()
     ],
     ByCode = [
         {pyrlang_object:get_attr(Status, <<"value">>), Status}
-        || {_Name, Status} <- Members
+     || {_Name, Status} <- Members
     ],
     Attrs = maps:from_list(Members),
     native_instance(<<"HTTPStatus">>, Attrs#{
@@ -9092,8 +10083,12 @@ http_status_instance(Name, Code, Phrase) ->
 
 http_status_lookup(ByCode, [Code]) ->
     case lists:keyfind(http_status_value(Code), 1, ByCode) of
-        {_, Status} -> Status;
-        false -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Code))
+        {_, Status} ->
+            Status;
+        false ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Code)
+            )
     end;
 http_status_lookup(_ByCode, Args) ->
     erlang:error({arity_error, {'HTTPStatus', length(Args)}}).
@@ -9192,7 +10187,10 @@ http_method_class() ->
         {<<"PUT">>, <<"PUT">>},
         {<<"TRACE">>, <<"TRACE">>}
     ],
-    native_instance(<<"HTTPMethod">>, maps:from_list(Methods ++ [{<<"__members__">>, pyrlang_heap:dict(Methods)}])).
+    native_instance(
+        <<"HTTPMethod">>,
+        maps:from_list(Methods ++ [{<<"__members__">>, pyrlang_heap:dict(Methods)}])
+    ).
 
 simple_cookie_new([], KwArgs) when map_size(KwArgs) =:= 0 ->
     simple_cookie_instance();
@@ -9245,12 +10243,17 @@ simple_cookie_instance() ->
             cookie_get_morsel(Store, normalize_name(Name))
         end,
         <<"values">> => fun() ->
-            pyrlang_heap:list([simple_cookie_morsel(Store, Name, Entry) || {Name, Entry} <- pyrlang_heap:dict_items(Store)])
+            pyrlang_heap:list([
+                simple_cookie_morsel(Store, Name, Entry)
+             || {Name, Entry} <- pyrlang_heap:dict_items(Store)
+            ])
         end,
         <<"output">> => fun() ->
             CookiePairs = [
-                morsel_output_binary(<<>>, Name, cookie_entry_value(Entry), cookie_entry_attrs(Entry))
-                || {Name, Entry} <- pyrlang_heap:dict_items(Store)
+                morsel_output_binary(
+                    <<>>, Name, cookie_entry_value(Entry), cookie_entry_attrs(Entry)
+                )
+             || {Name, Entry} <- pyrlang_heap:dict_items(Store)
             ],
             join_binary(CookiePairs, <<"; ">>)
         end
@@ -9269,10 +10272,13 @@ simple_cookie_morsel(Store, Name, Entry) ->
             Current = cookie_lookup_entry(Store, Name),
             maps:get(normalize_name(Attr), cookie_entry_attrs(Current), <<>>)
         end,
-        <<"output">> => {py_native_call, fun(Args, KwArgs) ->
-            Current = cookie_lookup_entry(Store, Name),
-            morsel_output(Name, cookie_entry_value(Current), cookie_entry_attrs(Current), Args, KwArgs)
-        end}
+        <<"output">> =>
+            {py_native_call, fun(Args, KwArgs) ->
+                Current = cookie_lookup_entry(Store, Name),
+                morsel_output(
+                    Name, cookie_entry_value(Current), cookie_entry_attrs(Current), Args, KwArgs
+                )
+            end}
     }).
 
 morsel_output(Name, Value, Attrs, Args, KwArgs0) ->
@@ -9306,8 +10312,21 @@ morsel_output_binary(Header, Name, Value, Attrs) ->
     end.
 
 cookie_output_attrs(Attrs) ->
-    Order = [<<"expires">>, <<"max-age">>, <<"path">>, <<"domain">>, <<"secure">>, <<"httponly">>, <<"samesite">>],
-    [cookie_output_attr(Name, maps:get(Name, Attrs)) || Name <- Order, maps:is_key(Name, Attrs), cookie_output_attr(Name, maps:get(Name, Attrs)) =/= skip].
+    Order = [
+        <<"expires">>,
+        <<"max-age">>,
+        <<"path">>,
+        <<"domain">>,
+        <<"secure">>,
+        <<"httponly">>,
+        <<"samesite">>
+    ],
+    [
+        cookie_output_attr(Name, maps:get(Name, Attrs))
+     || Name <- Order,
+        maps:is_key(Name, Attrs),
+        cookie_output_attr(Name, maps:get(Name, Attrs)) =/= skip
+    ].
 
 cookie_output_attr(_Name, <<>>) ->
     skip;
@@ -9365,8 +10384,7 @@ load_cookie_part(Store, Part) ->
     end.
 
 cookie_get(Store, Name) ->
-    try pyrlang_heap:dict_get(Store, Name)
-    of
+    try pyrlang_heap:dict_get(Store, Name) of
         Entry -> cookie_entry_value(Entry)
     catch
         error:{badkey, _} -> none
@@ -9377,25 +10395,36 @@ cookie_get_morsel(Store, Name) ->
         Entry -> simple_cookie_morsel(Store, Name, Entry)
     catch
         error:{badkey, _} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Name))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Name)
+            )
     end.
 
 cookie_store_put(Store, Name, Value) ->
     Attrs =
-        try cookie_entry_attrs(pyrlang_heap:dict_get(Store, Name))
-        catch _:_ -> #{}
+        try
+            cookie_entry_attrs(pyrlang_heap:dict_get(Store, Name))
+        catch
+            _:_ -> #{}
         end,
     pyrlang_heap:dict_put(Store, Name, {cookie, Value, Attrs}).
 
 cookie_set_attr(Store, Name, Attr, AttrValue) ->
     Entry = cookie_lookup_entry(Store, Name),
-    pyrlang_heap:dict_put(Store, Name, {cookie, cookie_entry_value(Entry), (cookie_entry_attrs(Entry))#{Attr => AttrValue}}).
+    pyrlang_heap:dict_put(
+        Store,
+        Name,
+        {cookie, cookie_entry_value(Entry), (cookie_entry_attrs(Entry))#{Attr => AttrValue}}
+    ).
 
 cookie_lookup_entry(Store, Name) ->
-    try pyrlang_heap:dict_get(Store, Name)
+    try
+        pyrlang_heap:dict_get(Store, Name)
     catch
         error:{badkey, _} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Name))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Name)
+            )
     end.
 
 cookie_entry_value({cookie, Value, _Attrs}) ->
@@ -9437,10 +10466,17 @@ url_unquote_plus(Args, _KwArgs) ->
 url_urlencode(Args, KwArgs) ->
     {Query, Doseq} = urlencode_args(Args, KwArgs),
     Pairs = query_pairs(Query, py_truthy(Doseq)),
-    join_binary([
-        <<(quote_binary(url_value_to_binary(Key), <<"">>, true))/binary, "=", (quote_binary(url_value_to_binary(Value), <<"">>, true))/binary>>
-        || {Key, Value} <- Pairs
-    ], <<"&">>).
+    join_binary(
+        [
+            <<
+                (quote_binary(url_value_to_binary(Key), <<"">>, true))/binary,
+                "=",
+                (quote_binary(url_value_to_binary(Value), <<"">>, true))/binary
+            >>
+         || {Key, Value} <- Pairs
+        ],
+        <<"&">>
+    ).
 
 urlencode_args([Query], KwArgs) ->
     check_urlencode_kwargs(KwArgs),
@@ -9464,11 +10500,15 @@ check_urlencode_kwargs(KwArgs) ->
 url_parse_qs([Query], KwArgs) when map_size(KwArgs) =:= 0 ->
     Pairs = parse_query_pairs(normalize_name(Query)),
     Grouped = lists:foldl(
-        fun({Key, Value}, Acc) -> maps:update_with(Key, fun(Values) -> [Value | Values] end, [Value], Acc) end,
+        fun({Key, Value}, Acc) ->
+            maps:update_with(Key, fun(Values) -> [Value | Values] end, [Value], Acc)
+        end,
         #{},
         Pairs
     ),
-    pyrlang_heap:dict(maps:map(fun(_Key, Values) -> pyrlang_heap:list(lists:reverse(Values)) end, Grouped));
+    pyrlang_heap:dict(
+        maps:map(fun(_Key, Values) -> pyrlang_heap:list(lists:reverse(Values)) end, Grouped)
+    );
 url_parse_qs(Args, _KwArgs) ->
     erlang:error({arity_error, {parse_qs, length(Args)}}).
 
@@ -9508,13 +10548,17 @@ url_split_result(Url, DefaultScheme) ->
             {ok, Port} -> <<Host/binary, ":", (integer_to_binary(Port))/binary>>;
             error -> Host
         end,
-    url_result_instance(<<"SplitResult">>, [
-        {<<"scheme">>, Scheme},
-        {<<"netloc">>, Netloc},
-        {<<"path">>, Path},
-        {<<"query">>, Query},
-        {<<"fragment">>, Fragment}
-    ], normalize_name(Url)).
+    url_result_instance(
+        <<"SplitResult">>,
+        [
+            {<<"scheme">>, Scheme},
+            {<<"netloc">>, Netloc},
+            {<<"path">>, Path},
+            {<<"query">>, Query},
+            {<<"fragment">>, Fragment}
+        ],
+        normalize_name(Url)
+    ).
 
 url_parse_result(Url, DefaultScheme) ->
     Parsed = uri_string:parse(normalize_name(Url)),
@@ -9528,14 +10572,18 @@ url_parse_result(Url, DefaultScheme) ->
             {ok, Port} -> <<Host/binary, ":", (integer_to_binary(Port))/binary>>;
             error -> Host
         end,
-    url_result_instance(<<"ParseResult">>, [
-        {<<"scheme">>, Scheme},
-        {<<"netloc">>, Netloc},
-        {<<"path">>, Path},
-        {<<"params">>, <<>>},
-        {<<"query">>, Query},
-        {<<"fragment">>, Fragment}
-    ], normalize_name(Url)).
+    url_result_instance(
+        <<"ParseResult">>,
+        [
+            {<<"scheme">>, Scheme},
+            {<<"netloc">>, Netloc},
+            {<<"path">>, Path},
+            {<<"params">>, <<>>},
+            {<<"query">>, Query},
+            {<<"fragment">>, Fragment}
+        ],
+        normalize_name(Url)
+    ).
 
 url_result_instance(Name, Fields, OriginalUrl) ->
     Values = [Value || {_Field, Value} <- Fields],
@@ -9543,7 +10591,9 @@ url_result_instance(Name, Fields, OriginalUrl) ->
         <<"geturl">> => fun() -> OriginalUrl end,
         <<"__len__">> => fun() -> length(Values) end,
         <<"__iter__">> => fun() -> pyrlang_iter:iter(pyrlang_heap:list(Values)) end,
-        <<"__getitem__">> => fun(Index) -> lists:nth(url_result_index(Index, length(Values)) + 1, Values) end
+        <<"__getitem__">> => fun(Index) ->
+            lists:nth(url_result_index(Index, length(Values)) + 1, Values)
+        end
     }).
 
 url_result_index(Index, Length) when is_integer(Index), Index < 0 ->
@@ -9551,7 +10601,9 @@ url_result_index(Index, Length) when is_integer(Index), Index < 0 ->
 url_result_index(Index, Length) when is_integer(Index), Index >= 0, Index < Length ->
     Index;
 url_result_index(Index, _Length) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)
+    ).
 
 url_urljoin([Base, Url], KwArgs) when map_size(KwArgs) =:= 0 ->
     url_join_binary(Base, Url);
@@ -9572,10 +10624,14 @@ url_urldefrag([Url], KwArgs) when map_size(KwArgs) =:= 0 ->
             nomatch ->
                 {Text, <<>>}
         end,
-    url_result_instance(<<"DefragResult">>, [
-        {<<"url">>, Clean},
-        {<<"fragment">>, Fragment}
-    ], Clean);
+    url_result_instance(
+        <<"DefragResult">>,
+        [
+            {<<"url">>, Clean},
+            {<<"fragment">>, Fragment}
+        ],
+        Clean
+    );
 url_urldefrag(Args, _KwArgs) ->
     erlang:error({arity_error, {urldefrag, length(Args)}}).
 
@@ -9583,7 +10639,8 @@ url_join_binary(Base, Url) ->
     BaseBin = normalize_name(Base),
     UrlBin = normalize_name(Url),
     case uri_string:parse(UrlBin) of
-        #{scheme := _Scheme} -> UrlBin;
+        #{scheme := _Scheme} ->
+            UrlBin;
         _ ->
             case uri_string:resolve(binary_to_list(UrlBin), binary_to_list(BaseBin)) of
                 Resolved when is_list(Resolved) ->
@@ -9640,8 +10697,14 @@ url_urlunsplit(Args, _KwArgs) ->
 url_parts(Parts, Count) ->
     Values = [normalize_name(Value) || Value <- pyrlang_iter:values(Parts)],
     case length(Values) of
-        Count -> Values;
-        _ -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"wrong number of fields">>))
+        Count ->
+            Values;
+        _ ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"wrong number of fields">>
+                )
+            )
     end.
 
 url_unwrap(Url) ->
@@ -9657,8 +10720,10 @@ url_unwrap(Url) ->
 url_splittype(Url) ->
     Text = normalize_name(Url),
     case binary:match(Text, <<":">>) of
-        {Pos, 1} -> {binary:part(Text, 0, Pos), binary:part(Text, Pos + 1, byte_size(Text) - Pos - 1)};
-        nomatch -> {none, Text}
+        {Pos, 1} ->
+            {binary:part(Text, 0, Pos), binary:part(Text, Pos + 1, byte_size(Text) - Pos - 1)};
+        nomatch ->
+            {none, Text}
     end.
 
 url_splithost(Url) ->
@@ -9707,7 +10772,8 @@ url_splittag(Url) ->
 split_once(Text, Sep, Default, Direction) ->
     Match =
         case Direction of
-            left -> binary:match(Text, Sep);
+            left ->
+                binary:match(Text, Sep);
             right ->
                 Matches = binary:matches(Text, Sep),
                 case Matches of
@@ -9717,7 +10783,10 @@ split_once(Text, Sep, Default, Direction) ->
         end,
     case Match of
         {Pos, Size} ->
-            {binary:part(Text, 0, Pos), binary:part(Text, Pos + Size, byte_size(Text) - Pos - Size)};
+            {
+                binary:part(Text, 0, Pos),
+                binary:part(Text, Pos + Size, byte_size(Text) - Pos - Size)
+            };
         nomatch ->
             {Text, Default}
     end.
@@ -9875,10 +10944,14 @@ email_formatdate_call(Args, KwArgs) ->
                     {ok, TimeVal} -> [TimeVal];
                     error -> []
                 end;
-            [TimeVal] -> [TimeVal];
-            [TimeVal, _LocalTime] -> [TimeVal];
-            [TimeVal, _LocalTime, _UseGmt] -> [TimeVal];
-            _ -> erlang:error({arity_error, {email_formatdate, length(Args)}})
+            [TimeVal] ->
+                [TimeVal];
+            [TimeVal, _LocalTime] ->
+                [TimeVal];
+            [TimeVal, _LocalTime, _UseGmt] ->
+                [TimeVal];
+            _ ->
+                erlang:error({arity_error, {email_formatdate, length(Args)}})
         end,
     email_formatdate(TimeArgs).
 
@@ -9897,8 +10970,10 @@ email_format_datetime_call(Args, KwArgs) ->
 
 ensure_known_kwargs(KwArgs, Known, Function) ->
     case maps:keys(maps:without(Known, KwArgs)) of
-        [] -> ok;
-        [Unexpected | _] -> erlang:error({type_error, {unexpected_keyword_argument, Function, Unexpected}})
+        [] ->
+            ok;
+        [Unexpected | _] ->
+            erlang:error({type_error, {unexpected_keyword_argument, Function, Unexpected}})
     end.
 
 posix_seconds_to_datetime(Seconds) ->
@@ -9915,18 +10990,36 @@ email_format_datetime_object(Value) ->
     email_format_datetime_tuple({{Year, Month, Day}, {Hour, Minute, Second}}).
 
 date_attr_or_default(Value, Name, Default) ->
-    try pyrlang_object:get_attr(Value, Name)
+    try
+        pyrlang_object:get_attr(Value, Name)
     catch
         _:_ -> Default
     end.
 
 email_format_datetime_tuple({Date = {Year, Month, Day}, {Hour, Minute, Second}}) ->
-    Weekday = lists:nth(calendar:day_of_the_week(Date), [<<"Mon">>, <<"Tue">>, <<"Wed">>, <<"Thu">>, <<"Fri">>, <<"Sat">>, <<"Sun">>]),
-    MonthName = lists:nth(Month, [<<"Jan">>, <<"Feb">>, <<"Mar">>, <<"Apr">>, <<"May">>, <<"Jun">>, <<"Jul">>, <<"Aug">>, <<"Sep">>, <<"Oct">>, <<"Nov">>, <<"Dec">>]),
-    iolist_to_binary(io_lib:format(
-        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B GMT",
-        [Weekday, Day, MonthName, Year, Hour, Minute, Second]
-    )).
+    Weekday = lists:nth(calendar:day_of_the_week(Date), [
+        <<"Mon">>, <<"Tue">>, <<"Wed">>, <<"Thu">>, <<"Fri">>, <<"Sat">>, <<"Sun">>
+    ]),
+    MonthName = lists:nth(Month, [
+        <<"Jan">>,
+        <<"Feb">>,
+        <<"Mar">>,
+        <<"Apr">>,
+        <<"May">>,
+        <<"Jun">>,
+        <<"Jul">>,
+        <<"Aug">>,
+        <<"Sep">>,
+        <<"Oct">>,
+        <<"Nov">>,
+        <<"Dec">>
+    ]),
+    iolist_to_binary(
+        io_lib:format(
+            "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B GMT",
+            [Weekday, Day, MonthName, Year, Hour, Minute, Second]
+        )
+    ).
 
 email_message_from_bytes([Bytes | _Args], _KwArgs) ->
     email_message_instance(Bytes);
@@ -9940,7 +11033,8 @@ email_message_from_string(_Args, _KwArgs) ->
 
 email_message_from_file([File | _Args], _KwArgs) ->
     Content =
-        try pyrlang_eval:call(pyrlang_object:get_attr(File, <<"read">>), [])
+        try
+            pyrlang_eval:call(pyrlang_object:get_attr(File, <<"read">>), [])
         catch
             _:_ -> <<>>
         end,
@@ -9971,7 +11065,9 @@ email_formataddr(Args) ->
     erlang:error({arity_error, {email_formataddr, length(Args)}}).
 
 email_getaddresses([Values]) ->
-    pyrlang_heap:list(lists:append([email_addresses_from_value(Value) || Value <- pyrlang_iter:values(Values)]));
+    pyrlang_heap:list(
+        lists:append([email_addresses_from_value(Value) || Value <- pyrlang_iter:values(Values)])
+    );
 email_getaddresses(Args) ->
     erlang:error({arity_error, {email_getaddresses, length(Args)}}).
 
@@ -10015,7 +11111,10 @@ email_pair(Address) ->
     {<<>>, Address}.
 
 email_addresses_from_value(Value) ->
-    [email_parse_address(Part) || Part <- binary:split(normalize_name(Value), <<",">>, [global]), trim_binary(Part) =/= <<>>].
+    [
+        email_parse_address(Part)
+     || Part <- binary:split(normalize_name(Value), <<",">>, [global]), trim_binary(Part) =/= <<>>
+    ].
 
 email_parse_address(Value0) ->
     Value = trim_binary(Value0),
@@ -10042,7 +11141,7 @@ find_module_in_paths(RelBase, [Base | Rest]) ->
 find_module_in_path(RelBase, Base) ->
     Candidates =
         [{filename:join(Base, RelBase ++ Ext), false} || Ext <- [".py", ".pyr"]] ++
-        [{filename:join([Base, RelBase, "__init__" ++ Ext]), true} || Ext <- [".py", ".pyr"]],
+            [{filename:join([Base, RelBase, "__init__" ++ Ext]), true} || Ext <- [".py", ".pyr"]],
     case [{Path, IsPackage} || {Path, IsPackage} <- Candidates, filelib:is_regular(Path)] of
         [{Path, IsPackage} | _] -> {ok, Path, IsPackage};
         [] -> error
@@ -10145,8 +11244,8 @@ os_get_exports_list([{py_ref, _} = ModuleRef]) ->
         module ->
             pyrlang_heap:list([
                 Name
-                || {Name, _Value} <- maps:to_list(env(ModuleRef)),
-                   not is_private_export(Name)
+             || {Name, _Value} <- maps:to_list(env(ModuleRef)),
+                not is_private_export(Name)
             ]);
         Type ->
             erlang:error({type_error, {'_get_exports_list', Type}})
@@ -10162,7 +11261,11 @@ is_private_export(_Name) ->
 os_urandom(Count) when is_integer(Count), Count >= 0 ->
     crypto:strong_rand_bytes(Count);
 os_urandom(Count) when is_integer(Count) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"negative argument not allowed">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ValueError">>), <<"negative argument not allowed">>
+        )
+    );
 os_urandom(Count) ->
     erlang:error({type_error, {urandom, Count}}).
 
@@ -10385,7 +11488,11 @@ random_getrandbits([_Self, K]) when is_integer(K), K >= 0 ->
             Raw bsr (Bytes * 8 - K)
     end;
 random_getrandbits([_Self, K]) when is_integer(K) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"number of bits must be non-negative">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ValueError">>), <<"number of bits must be non-negative">>
+        )
+    );
 random_getrandbits(Args) ->
     erlang:error({arity_error, {'_random.Random.getrandbits', length(Args)}}).
 
@@ -10521,7 +11628,9 @@ socket_hidden_descriptor(Name, Default) ->
     ).
 
 socket_init([Self | PosArgs], KwArgs) ->
-    Unknown = maps:keys(maps:without([<<"family">>, <<"type">>, <<"proto">>, <<"fileno">>], KwArgs)),
+    Unknown = maps:keys(
+        maps:without([<<"family">>, <<"type">>, <<"proto">>, <<"fileno">>], KwArgs)
+    ),
     case {length(PosArgs) =< 4, Unknown} of
         {false, _} ->
             erlang:error({arity_error, {socket, length(PosArgs)}});
@@ -10620,7 +11729,8 @@ socket_default_timeout() ->
 socket_hidden_attr(undefined, _Name, Default) ->
     Default;
 socket_hidden_attr(Self, Name, Default) ->
-    try pyrlang_object:get_attr(Self, Name)
+    try
+        pyrlang_object:get_attr(Self, Name)
     catch
         _:_ -> Default
     end.
@@ -10664,13 +11774,19 @@ socket_getservbyname(Args) ->
 socket_service_port(Service0, _Proto) ->
     Service = normalize_name(Service0),
     case Service of
-        <<"http">> -> 80;
-        <<"https">> -> 443;
-        <<"ssh">> -> 22;
-        <<"smtp">> -> 25;
-        <<"domain">> -> 53;
+        <<"http">> ->
+            80;
+        <<"https">> ->
+            443;
+        <<"ssh">> ->
+            22;
+        <<"smtp">> ->
+            25;
+        <<"domain">> ->
+            53;
         _ ->
-            try binary_to_integer(Service)
+            try
+                binary_to_integer(Service)
             catch
                 error:badarg -> 0
             end
@@ -10704,9 +11820,12 @@ socket_getaddrinfo(Args) ->
 
 socket_getnameinfo([SockAddr, _Flags]) ->
     case SockAddr of
-        {Host, Port} -> {normalize_name(Host), integer_to_binary(socket_port(Port))};
-        {Host, Port, _FlowInfo, _ScopeId} -> {normalize_name(Host), integer_to_binary(socket_port(Port))};
-        _ -> {<<"localhost">>, <<"0">>}
+        {Host, Port} ->
+            {normalize_name(Host), integer_to_binary(socket_port(Port))};
+        {Host, Port, _FlowInfo, _ScopeId} ->
+            {normalize_name(Host), integer_to_binary(socket_port(Port))};
+        _ ->
+            {<<"localhost">>, <<"0">>}
     end;
 socket_getnameinfo(Args) ->
     erlang:error({arity_error, {getnameinfo, length(Args)}}).
@@ -10724,7 +11843,8 @@ socket_port(none) ->
 socket_port(Port) when is_integer(Port) ->
     Port;
 socket_port(Port) when is_binary(Port) ->
-    try binary_to_integer(Port)
+    try
+        binary_to_integer(Port)
     catch
         error:badarg -> socket_service_port(Port, <<"tcp">>)
     end;
@@ -10774,11 +11894,14 @@ socket_pack_ipv4(Address) ->
                 C = binary_to_integer(C0),
                 D = binary_to_integer(D0),
                 case lists:all(fun(Byte) -> Byte >= 0 andalso Byte =< 255 end, [A, B, C, D]) of
-                    true -> <<A:8, B:8, C:8, D:8>>;
-                    false -> socket_raise_os_error(<<"illegal IP address string passed to inet_pton">>)
+                    true ->
+                        <<A:8, B:8, C:8, D:8>>;
+                    false ->
+                        socket_raise_os_error(<<"illegal IP address string passed to inet_pton">>)
                 end
             catch
-                error:badarg -> socket_raise_os_error(<<"illegal IP address string passed to inet_pton">>)
+                error:badarg ->
+                    socket_raise_os_error(<<"illegal IP address string passed to inet_pton">>)
             end;
         _ ->
             socket_raise_os_error(<<"illegal IP address string passed to inet_pton">>)
@@ -10819,7 +11942,12 @@ socket_detach(Args) ->
     erlang:error({arity_error, {detach, length(Args)}}).
 
 socket_setblocking([Self, Flag]) ->
-    Timeout = case Flag of false -> 0.0; 0 -> 0.0; _ -> none end,
+    Timeout =
+        case Flag of
+            false -> 0.0;
+            0 -> 0.0;
+            _ -> none
+        end,
     socket_set_hidden_attr(Self, <<"_timeout">>, Timeout);
 socket_setblocking(Args) ->
     erlang:error({arity_error, {setblocking, length(Args)}}).
@@ -10944,8 +12072,12 @@ typing_generic_class() ->
         #{
             <<"__module__">> => <<"typing">>,
             <<"__parameters__">> => {},
-            <<"__class_getitem__">> => typing_classmethod({py_native_varargs, fun typing_generic_class_getitem/1}),
-            <<"__init_subclass__">> => typing_classmethod({py_native_varargs, fun(_Args) -> none end})
+            <<"__class_getitem__">> => typing_classmethod(
+                {py_native_varargs, fun typing_generic_class_getitem/1}
+            ),
+            <<"__init_subclass__">> => typing_classmethod(
+                {py_native_varargs, fun(_Args) -> none end}
+            )
         }
     end).
 
@@ -10954,7 +12086,9 @@ typing_type_parameter_class(Name, Kind) ->
         #{
             <<"__module__">> => <<"_typing">>,
             <<"__pyrlang_builtin_constructor__">> =>
-                {py_native_call, fun(Args, KwArgs) -> typing_type_parameter_new(Class, Kind, Args, KwArgs) end}
+                {py_native_call, fun(Args, KwArgs) ->
+                    typing_type_parameter_new(Class, Kind, Args, KwArgs)
+                end}
         }
     end).
 
@@ -10963,7 +12097,9 @@ typing_type_alias_type_class() ->
         #{
             <<"__module__">> => <<"_typing">>,
             <<"__pyrlang_builtin_constructor__">> =>
-                {py_native_call, fun(Args, KwArgs) -> typing_type_alias_type_new(Class, Args, KwArgs) end}
+                {py_native_call, fun(Args, KwArgs) ->
+                    typing_type_alias_type_new(Class, Args, KwArgs)
+                end}
         }
     end).
 
@@ -10983,7 +12119,10 @@ typing_cached_class(Name, AttrsFun) ->
 
 typing_create_cached_class(Key, Name, AttrsFun) ->
     Class = pyrlang_object:new_class(Name, [maps:get(<<"object">>, pyrlang_builtins:env())], #{}),
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_class_attr(Class, Attr, Value) end, AttrsFun(Class)),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_class_attr(Class, Attr, Value) end,
+        AttrsFun(Class)
+    ),
     erlang:put(Key, Class),
     Class.
 
@@ -11010,7 +12149,9 @@ typing_generic_class_getitem(Args) ->
     erlang:error({arity_error, {'Generic.__class_getitem__', length(Args)}}).
 
 typing_type_parameter_new(Class, Kind, [Name | Rest], KwArgs0) ->
-    Allowed = [<<"bound">>, <<"covariant">>, <<"contravariant">>, <<"infer_variance">>, <<"default">>],
+    Allowed = [
+        <<"bound">>, <<"covariant">>, <<"contravariant">>, <<"infer_variance">>, <<"default">>
+    ],
     Unknown = maps:keys(maps:without(Allowed, KwArgs0)),
     case Unknown of
         [] -> ok;
@@ -11039,8 +12180,12 @@ typing_type_parameter_new(Class, Kind, [Name | Rest], KwArgs0) ->
     Attrs =
         case Kind of
             paramspec ->
-                ArgsInstance = typing_param_spec_side(typing_simple_class(<<"ParamSpecArgs">>), Instance),
-                KwargsInstance = typing_param_spec_side(typing_simple_class(<<"ParamSpecKwargs">>), Instance),
+                ArgsInstance = typing_param_spec_side(
+                    typing_simple_class(<<"ParamSpecArgs">>), Instance
+                ),
+                KwargsInstance = typing_param_spec_side(
+                    typing_simple_class(<<"ParamSpecKwargs">>), Instance
+                ),
                 Attrs0#{
                     <<"args">> => ArgsInstance,
                     <<"kwargs">> => KwargsInstance,
@@ -11053,7 +12198,9 @@ typing_type_parameter_new(Class, Kind, [Name | Rest], KwArgs0) ->
             typevar ->
                 Attrs0
         end,
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs
+    ),
     Instance;
 typing_type_parameter_new(_Class, _Kind, Args, _KwArgs) ->
     erlang:error({arity_error, {'_typing.type_parameter', length(Args)}}).
@@ -11238,15 +12385,20 @@ signal_strsignal(Args) ->
     erlang:error({arity_error, {strsignal, length(Args)}}).
 
 signal_default_int_handler(_Args) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyboardInterrupt">>), <<>>)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"KeyboardInterrupt">>), <<>>)
+    ).
 
 signal_number(Value) ->
     Signum = socket_int(Value, -1),
     case lists:member(Signum, signal_numbers()) of
-        true -> Signum;
+        true ->
+            Signum;
         false ->
             pyrlang_exception:raise(
-                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"invalid signal number">>)
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"invalid signal number">>
+                )
             )
     end.
 
@@ -11439,8 +12591,14 @@ posix_listdir([]) ->
     posix_listdir([<<".">>]);
 posix_listdir([Path]) ->
     case file:list_dir(binary_to_list(normalize_name(Path))) of
-        {ok, Names} -> pyrlang_heap:list([unicode:characters_to_binary(Name) || Name <- Names]);
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+        {ok, Names} ->
+            pyrlang_heap:list([unicode:characters_to_binary(Name) || Name <- Names]);
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end;
 posix_listdir(Args) ->
     erlang:error({arity_error, {posix_listdir, length(Args)}}).
@@ -11449,9 +12607,16 @@ posix_mkdir([Path]) ->
     posix_mkdir([Path, 8#777]);
 posix_mkdir([Path, _Mode]) ->
     case file:make_dir(binary_to_list(normalize_name(Path))) of
-        ok -> none;
-        {error, eexist} -> none;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+        ok ->
+            none;
+        {error, eexist} ->
+            none;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end;
 posix_mkdir(Args) ->
     erlang:error({arity_error, {posix_mkdir, length(Args)}}).
@@ -11462,8 +12627,14 @@ posix_makedirs_call([Path, _Mode], _KwArgs) ->
     PathList = binary_to_list(normalize_name(Path)),
     EnsurePath = filename:join(PathList, ".pyrlang-dir"),
     case filelib:ensure_dir(EnsurePath) of
-        ok -> none;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+        ok ->
+            none;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end;
 posix_makedirs_call(Args, _KwArgs) ->
     erlang:error({arity_error, {posix_makedirs, length(Args)}}).
@@ -11476,15 +12647,23 @@ posix_walk_call([], KwArgs) ->
 posix_walk_call([Top], KwArgs) ->
     Topdown = maps:get(<<"topdown">>, KwArgs, true),
     FollowLinks = maps:get(<<"followlinks">>, KwArgs, false),
-    pyrlang_heap:list(posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks)));
+    pyrlang_heap:list(
+        posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks))
+    );
 posix_walk_call([Top, Topdown], KwArgs) ->
     FollowLinks = maps:get(<<"followlinks">>, KwArgs, false),
-    pyrlang_heap:list(posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks)));
+    pyrlang_heap:list(
+        posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks))
+    );
 posix_walk_call([Top, Topdown, _OnError], KwArgs) ->
     FollowLinks = maps:get(<<"followlinks">>, KwArgs, false),
-    pyrlang_heap:list(posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks)));
+    pyrlang_heap:list(
+        posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks))
+    );
 posix_walk_call([Top, Topdown, _OnError, FollowLinks], _KwArgs) ->
-    pyrlang_heap:list(posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks)));
+    pyrlang_heap:list(
+        posix_walk_entries(normalize_name(Top), py_truthy(Topdown), py_truthy(FollowLinks))
+    );
 posix_walk_call(Args, _KwArgs) ->
     erlang:error({arity_error, {posix_walk, length(Args)}}).
 
@@ -11495,7 +12674,10 @@ posix_walk_entries(Top, Topdown, FollowLinks) ->
             Names = [unicode:characters_to_binary(Name) || Name <- Names0],
             {Dirs, Files} = posix_walk_partition(Top, Names, FollowLinks, [], []),
             Entry = {Top, pyrlang_heap:list(Dirs), pyrlang_heap:list(Files)},
-            Children = lists:append([posix_walk_entries(posix_join_path(Top, Dir), Topdown, FollowLinks) || Dir <- Dirs]),
+            Children = lists:append([
+                posix_walk_entries(posix_join_path(Top, Dir), Topdown, FollowLinks)
+             || Dir <- Dirs
+            ]),
             case Topdown of
                 true -> [Entry | Children];
                 false -> Children ++ [Entry]
@@ -11515,19 +12697,36 @@ posix_walk_partition(Top, [Name | Rest], FollowLinks, Dirs, Files) ->
     end.
 
 posix_join_path(Base, Name) ->
-    unicode:characters_to_binary(filename:join(binary_to_list(Base), binary_to_list(normalize_name(Name)))).
+    unicode:characters_to_binary(
+        filename:join(binary_to_list(Base), binary_to_list(normalize_name(Name)))
+    ).
 
 posix_is_symlink(PathList) ->
     case file:read_link_info(PathList) of
-        {ok, {file_info, _Size, symlink, _Access, _ATime, _MTime, _CTime, _Mode, _Links, _Major, _Minor, _Inode, _Uid, _Gid}} -> true;
-        _ -> false
+        {ok,
+            {file_info, _Size, symlink, _Access, _ATime, _MTime, _CTime, _Mode, _Links, _Major,
+                _Minor, _Inode, _Uid, _Gid}} ->
+            true;
+        _ ->
+            false
     end.
 
 posix_rmdir_call([Path], _KwArgs) ->
     case file:del_dir(binary_to_list(normalize_name(Path))) of
-        ok -> none;
-        {error, enoent} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"FileNotFoundError">>), normalize_name(Path)));
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+        ok ->
+            none;
+        {error, enoent} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"FileNotFoundError">>), normalize_name(Path)
+                )
+            );
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end;
 posix_rmdir_call(Args, _KwArgs) ->
     erlang:error({arity_error, {posix_rmdir, length(Args)}}).
@@ -11558,10 +12757,11 @@ posix_chmod_call(Args, _KwArgs) ->
     erlang:error({arity_error, {posix_chmod, length(Args)}}).
 
 posix_umask([Mask]) when is_integer(Mask) ->
-    Previous = case erlang:get(pyrlang_posix_umask) of
-        undefined -> 8#022;
-        Existing when is_integer(Existing) -> Existing
-    end,
+    Previous =
+        case erlang:get(pyrlang_posix_umask) of
+            undefined -> 8#022;
+            Existing when is_integer(Existing) -> Existing
+        end,
     erlang:put(pyrlang_posix_umask, Mask),
     Previous;
 posix_umask(Args) ->
@@ -11569,16 +12769,33 @@ posix_umask(Args) ->
 
 posix_replace(Source, Destination) ->
     _ = file:delete(binary_to_list(normalize_name(Destination))),
-    case file:rename(binary_to_list(normalize_name(Source)), binary_to_list(normalize_name(Destination))) of
-        ok -> none;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+    case
+        file:rename(
+            binary_to_list(normalize_name(Source)), binary_to_list(normalize_name(Destination))
+        )
+    of
+        ok ->
+            none;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end.
 
 posix_unlink(Path) ->
     case file:delete(binary_to_list(normalize_name(Path))) of
-        ok -> none;
-        {error, enoent} -> none;
-        {error, Reason} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+        ok ->
+            none;
+        {error, enoent} ->
+            none;
+        {error, Reason} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end.
 
 posix_unlink_call([Path], _KwArgs) ->
@@ -11592,15 +12809,26 @@ posix_stat(Path) ->
         {ok, Info} ->
             Size = filelib:file_size(PathList),
             IsDir = filelib:is_dir(PathList),
-            Mode = case IsDir of true -> 8#040755; false -> 8#100644 end,
+            Mode =
+                case IsDir of
+                    true -> 8#040755;
+                    false -> 8#100644
+                end,
             MTime =
                 case Info of
-                    {file_info, _Size0, _Type, _Access, _ATime, MTime0, _CTime, _Mode0, _Links, _Major, _Minor, _Inode, _Uid, _Gid} -> MTime0;
-                    _ -> 0
+                    {file_info, _Size0, _Type, _Access, _ATime, MTime0, _CTime, _Mode0, _Links,
+                        _Major, _Minor, _Inode, _Uid, _Gid} ->
+                        MTime0;
+                    _ ->
+                        0
                 end,
             stat_result_instance(Mode, Size, MTime);
         {error, Reason} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"OSError">>), atom_to_binary(Reason, utf8)
+                )
+            )
     end.
 
 posix_stat_call([Path], _KwArgs) ->
@@ -11650,9 +12878,14 @@ terminal_size_new(Args, KwArgs) ->
 
 terminal_size_values(Sequence) ->
     case pyrlang_iter:values(Sequence) of
-        [Columns, Lines] -> {Columns, Lines};
-        Values -> pyrlang_exception:raise(
-            pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {terminal_size, length(Values)}))
+        [Columns, Lines] ->
+            {Columns, Lines};
+        Values ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), {terminal_size, length(Values)}
+                )
+            )
     end.
 
 terminal_size_instance({Columns, Lines}) ->
@@ -11669,7 +12902,10 @@ terminal_size_getitem(Values, Index) when is_integer(Index) ->
     element(normalize_terminal_size_index(Index), Values);
 terminal_size_getitem(_Values, Index) ->
     pyrlang_exception:raise(
-        pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), {terminal_size_index, Index})).
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"TypeError">>), {terminal_size_index, Index}
+        )
+    ).
 
 dir_entry_type() ->
     case erlang:get(pyrlang_dir_entry_type) of
@@ -11689,7 +12925,8 @@ normalize_terminal_size_index(Index) when Index < 0, Index >= -2 ->
     Index + 3;
 normalize_terminal_size_index(Index) ->
     pyrlang_exception:raise(
-        pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)).
+        pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), Index)
+    ).
 
 os_get_terminal_size([]) ->
     terminal_size_instance({80, 24});
@@ -11768,7 +13005,9 @@ posixpath_env(Name) ->
 posixpath_join([]) ->
     erlang:error({arity_error, {posixpath_join, 0}});
 posixpath_join(Parts) ->
-    unicode:characters_to_binary(filename:join([binary_to_list(normalize_name(Part)) || Part <- Parts])).
+    unicode:characters_to_binary(
+        filename:join([binary_to_list(normalize_name(Part)) || Part <- Parts])
+    ).
 
 posixpath_dirname([Path]) ->
     unicode:characters_to_binary(filename:dirname(binary_to_list(normalize_name(Path))));
@@ -11941,9 +13180,15 @@ rstrip_path_separators_nonroot(Bin) ->
 
 posix_normpath(Path0) ->
     Path = normalize_name(Path0),
-    Absolute = case Path of <<"/", _/binary>> -> true; _ -> false end,
+    Absolute =
+        case Path of
+            <<"/", _/binary>> -> true;
+            _ -> false
+        end,
     Parts = binary:split(Path, <<"/">>, [global]),
-    Kept = lists:reverse(lists:foldl(fun(Part, Acc) -> normpath_part(Part, Acc, Absolute) end, [], Parts)),
+    Kept = lists:reverse(
+        lists:foldl(fun(Part, Acc) -> normpath_part(Part, Acc, Absolute) end, [], Parts)
+    ),
     Joined = join_binary(Kept, <<"/">>),
     case {Absolute, Joined} of
         {true, <<>>} -> <<"/">>;
@@ -11972,7 +13217,10 @@ home_dir() ->
     end.
 
 normalize_env(Values) when is_map(Values) ->
-    maps:from_list([{normalize_name(Key), normalize_name(Value)} || {Key, Value} <- maps:to_list(Values)]);
+    maps:from_list([
+        {normalize_name(Key), normalize_name(Value)}
+     || {Key, Value} <- maps:to_list(Values)
+    ]);
 normalize_env(Values) when is_list(Values) ->
     maps:from_list([{normalize_name(Key), normalize_name(Value)} || {Key, Value} <- Values]).
 
@@ -12001,7 +13249,8 @@ normalize_bytes({py_ref, _} = Ref) ->
             Value;
         error ->
             case bytes_method_value(Ref) of
-                {ok, Value} -> Value;
+                {ok, Value} ->
+                    Value;
                 error ->
                     trace_normalize_bytes_error(Ref),
                     erlang:error({type_error, {expected_bytes, Ref}})
@@ -12016,18 +13265,25 @@ trace_normalize_bytes_error(Ref) ->
             io:format(
                 standard_error,
                 "PYRLANG_BYTES_REF type=~p class=~p attrs=~p stack=~p~n",
-                [safe_heap_type(Ref), safe_class_name(Ref), safe_attr_keys(Ref), pyrlang_eval:trace_function_stack()]
+                [
+                    safe_heap_type(Ref),
+                    safe_class_name(Ref),
+                    safe_attr_keys(Ref),
+                    pyrlang_eval:trace_function_stack()
+                ]
             )
     end.
 
 safe_heap_type(Ref) ->
-    try pyrlang_heap:type(Ref)
+    try
+        pyrlang_heap:type(Ref)
     catch
         _:_ -> unknown
     end.
 
 safe_class_name(Ref) ->
-    try pyrlang_object:class_name(pyrlang_builtins:object_class(Ref))
+    try
+        pyrlang_object:class_name(pyrlang_builtins:object_class(Ref))
     catch
         _:_ -> unknown
     end.
@@ -12101,7 +13357,8 @@ is_string_subclass_instance({py_ref, _} = Ref) ->
     ).
 
 class_named({py_ref, _} = Class, Name) ->
-    try pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
+    try
+        pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
     catch
         _:_ -> false
     end;

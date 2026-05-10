@@ -30,7 +30,9 @@ data_descriptor_takes_precedence_over_instance_attr_test() ->
             pyrlang_heap:dict_get(pyrlang_object:get_attr(Instance, <<"storage">>), <<"value">>)
         end,
         fun(Instance, Value) ->
-            pyrlang_heap:dict_put(pyrlang_object:get_attr(Instance, <<"storage">>), <<"value">>, Value)
+            pyrlang_heap:dict_put(
+                pyrlang_object:get_attr(Instance, <<"storage">>), <<"value">>, Value
+            )
         end
     ),
     Class = pyrlang_object:new_class(<<"WithDescriptor">>, #{<<"value">> => Descriptor}),

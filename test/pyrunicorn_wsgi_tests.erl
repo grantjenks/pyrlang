@@ -3,7 +3,9 @@
 -include_lib("eunit/include/eunit.hrl").
 
 environ_contains_wsgi_and_cgi_keys_test() ->
-    Env = pyrunicorn_wsgi:environ(<<"get">>, <<"/todos/?page=1">>, [{<<"host">>, <<"example.test">>}], <<"">>, #{}),
+    Env = pyrunicorn_wsgi:environ(
+        <<"get">>, <<"/todos/?page=1">>, [{<<"host">>, <<"example.test">>}], <<"">>, #{}
+    ),
     ?assertEqual(<<"GET">>, maps:get(<<"REQUEST_METHOD">>, Env)),
     ?assertEqual(<<"/todos/">>, maps:get(<<"PATH_INFO">>, Env)),
     ?assertEqual(<<"page=1">>, maps:get(<<"QUERY_STRING">>, Env)),
@@ -114,9 +116,18 @@ worker_module_globals_are_actor_local_test() ->
     ok = pyrlang:set_path([Dir]),
     Worker1 = pyrunicorn_worker:start(AppSpec),
     Worker2 = pyrunicorn_worker:start(AppSpec),
-    ?assertEqual({<<"200 OK">>, [], [<<"1">>]}, pyrunicorn_worker:request(Worker1, <<"GET">>, <<"/">>, [], <<"">>)),
-    ?assertEqual({<<"200 OK">>, [], [<<"2">>]}, pyrunicorn_worker:request(Worker1, <<"GET">>, <<"/">>, [], <<"">>)),
-    ?assertEqual({<<"200 OK">>, [], [<<"1">>]}, pyrunicorn_worker:request(Worker2, <<"GET">>, <<"/">>, [], <<"">>)),
+    ?assertEqual(
+        {<<"200 OK">>, [], [<<"1">>]},
+        pyrunicorn_worker:request(Worker1, <<"GET">>, <<"/">>, [], <<"">>)
+    ),
+    ?assertEqual(
+        {<<"200 OK">>, [], [<<"2">>]},
+        pyrunicorn_worker:request(Worker1, <<"GET">>, <<"/">>, [], <<"">>)
+    ),
+    ?assertEqual(
+        {<<"200 OK">>, [], [<<"1">>]},
+        pyrunicorn_worker:request(Worker2, <<"GET">>, <<"/">>, [], <<"">>)
+    ),
     cleanup_wsgi_app(Dir, Module).
 
 application_error_becomes_500_response_test() ->
@@ -125,7 +136,9 @@ application_error_becomes_500_response_test() ->
         erlang:error(app_failed)
     end,
     ?assertEqual(
-        {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [<<"internal server error">>]},
+        {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [
+            <<"internal server error">>
+        ]},
         pyrunicorn_wsgi:call_app(App, <<"GET">>, <<"/">>, [], <<"">>)
     ).
 
@@ -139,7 +152,9 @@ pyrlang_application_error_becomes_500_response_test() ->
     {Dir, Module, AppSpec} = write_wsgi_app(Source),
     ok = pyrlang:set_path([Dir]),
     ?assertEqual(
-        {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [<<"internal server error">>]},
+        {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [
+            <<"internal server error">>
+        ]},
         pyrunicorn_wsgi:call_app(AppSpec, <<"GET">>, <<"/">>, [], <<"">>)
     ),
     cleanup_wsgi_app(Dir, Module).
@@ -253,8 +268,13 @@ pyrlang_wsgi_start_response_exc_info_after_write_keeps_sent_response_test() ->
 
 http_parse_and_format_response_test() ->
     Raw = <<"GET /healthz?x=1 HTTP/1.1\r\nHost: localhost\r\n\r\n">>,
-    ?assertEqual({ok, <<"GET">>, <<"/healthz?x=1">>, [{<<"host">>, <<"localhost">>}], <<"">>}, pyrunicorn_http:parse_request(Raw)),
-    Response = pyrunicorn_http:format_response({<<"200 OK">>, [{<<"content-type">>, <<"text/plain">>}], [<<"ok">>]}),
+    ?assertEqual(
+        {ok, <<"GET">>, <<"/healthz?x=1">>, [{<<"host">>, <<"localhost">>}], <<"">>},
+        pyrunicorn_http:parse_request(Raw)
+    ),
+    Response = pyrunicorn_http:format_response(
+        {<<"200 OK">>, [{<<"content-type">>, <<"text/plain">>}], [<<"ok">>]}
+    ),
     ?assertMatch(<<"HTTP/1.1 200 OK\r\n", _/binary>>, Response).
 
 http_format_response_recomputes_content_length_test() ->
@@ -362,7 +382,9 @@ tcp_server_reads_content_length_body_across_packets_test() ->
     end,
     {ok, Server, Port} = pyrunicorn_server:start(App),
     {ok, Socket} = gen_tcp:connect({127, 0, 0, 1}, Port, [binary, {active, false}], 5000),
-    ok = gen_tcp:send(Socket, <<"POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\n\r\nhello">>),
+    ok = gen_tcp:send(
+        Socket, <<"POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\n\r\nhello">>
+    ),
     timer:sleep(20),
     ok = gen_tcp:send(Socket, <<" world">>),
     {ok, Response} = gen_tcp:recv(Socket, 0, 5000),
@@ -522,12 +544,14 @@ http_get(Port, Path) ->
 wait_for_restarted_worker(_Server, OldPid, 0) ->
     erlang:error({worker_not_restarted, OldPid});
 wait_for_restarted_worker(Server, OldPid, Attempts) ->
-    case [
-        Pid
-        || Pid <- pyrunicorn_server:workers(Server),
-           Pid =/= OldPid,
-           erlang:is_process_alive(Pid)
-    ] of
+    case
+        [
+            Pid
+         || Pid <- pyrunicorn_server:workers(Server),
+            Pid =/= OldPid,
+            erlang:is_process_alive(Pid)
+        ]
+    of
         [Pid | _] ->
             Pid;
         [] ->

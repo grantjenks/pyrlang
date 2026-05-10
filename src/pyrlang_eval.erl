@@ -1,6 +1,18 @@
 -module(pyrlang_eval).
 
--export([eval_expr/1, eval_expr/2, eval_module/1, eval_module/2, bind_module_globals/1, function_globals/1, call/2, builtin_attribute/2, eval_compare/3, current_exception_info/0, trace_function_stack/0, contextmanager_start/2, contextmanager_resume/2]).
+-export([
+    eval_expr/1, eval_expr/2,
+    eval_module/1, eval_module/2,
+    bind_module_globals/1,
+    function_globals/1,
+    call/2,
+    builtin_attribute/2,
+    eval_compare/3,
+    current_exception_info/0,
+    trace_function_stack/0,
+    contextmanager_start/2,
+    contextmanager_resume/2
+]).
 
 -type env() :: map().
 
@@ -78,10 +90,18 @@ eval_expr({named_expr, Name, Expr}, Env0) ->
     {Value, Env1#{Name => Value}};
 eval_expr({lambda, Params, {yield_expr, Expr}}, Env0) ->
     {PreparedParams, Env1} = prepare_params_with_env(Params, Env0),
-    {{py_function, PreparedParams, [{yield, Expr}], function_closure_env(capture_lambda_closure_env(Env1)), true}, Env1};
+    {
+        {py_function, PreparedParams, [{yield, Expr}],
+            function_closure_env(capture_lambda_closure_env(Env1)), true},
+        Env1
+    };
 eval_expr({lambda, Params, Expr}, Env0) ->
     {PreparedParams, Env1} = prepare_params_with_env(Params, Env0),
-    {{py_function, PreparedParams, [{return, Expr}], function_closure_env(capture_lambda_closure_env(Env1)), false}, Env1};
+    {
+        {py_function, PreparedParams, [{return, Expr}],
+            function_closure_env(capture_lambda_closure_env(Env1)), false},
+        Env1
+    };
 eval_expr({yield_expr, _Expr}, _Env) ->
     erlang:error(yield_outside_generator_collection);
 eval_expr({binop, Op, Left, Right}, Env0) ->
@@ -100,7 +120,10 @@ eval_expr({list, Items}, Env0) ->
     {pyrlang_heap:list(Values), Env1};
 eval_expr({list_comp, Expr, Clauses}, Env0) ->
     {Values, Env1} = eval_comp_collect(Clauses, Env0, fun(Env) -> eval_expr(Expr, Env) end),
-    {pyrlang_heap:list(Values), restore_comp_targets(Env0, Env1, comp_clause_target_names(Clauses))};
+    {
+        pyrlang_heap:list(Values),
+        restore_comp_targets(Env0, Env1, comp_clause_target_names(Clauses))
+    };
 eval_expr({list_comp, Expr, Target, IterableExpr, Condition}, Env0) ->
     {Iterable, Env1} = eval_expr(IterableExpr, Env0),
     {Values, Env2} = eval_list_comp(Expr, Target, iter_values(Iterable), Condition, Env1, []),
@@ -124,7 +147,9 @@ eval_expr({dict_comp, KeyExpr, ValueExpr, Clauses}, Env0) ->
     {pyrlang_heap:dict(Pairs), restore_comp_targets(Env0, Env1, comp_clause_target_names(Clauses))};
 eval_expr({dict_comp, KeyExpr, ValueExpr, Target, IterableExpr, Condition}, Env0) ->
     {Iterable, Env1} = eval_expr(IterableExpr, Env0),
-    {Pairs, Env2} = eval_dict_comp(KeyExpr, ValueExpr, Target, iter_values(Iterable), Condition, Env1, []),
+    {Pairs, Env2} = eval_dict_comp(
+        KeyExpr, ValueExpr, Target, iter_values(Iterable), Condition, Env1, []
+    ),
     {pyrlang_heap:dict(Pairs), restore_comp_targets(Env1, Env2, target_bound_names(Target))};
 eval_expr({set, Items}, Env0) ->
     {Values, Env1} = eval_list_items(Items, Env0, []),
@@ -140,13 +165,19 @@ eval_expr({gen_expr, Expr, Clauses}, Env0) ->
     trace_eval_flow(gen_expr_start, Clauses),
     {Values, Env1} = eval_comp_collect(Clauses, Env0, fun(Env) -> eval_expr(Expr, Env) end),
     trace_eval_flow({gen_expr_values, length(Values)}, Values),
-    {pyrlang_generator:from_values(Values), restore_comp_targets(Env0, Env1, comp_clause_target_names(Clauses))};
+    {
+        pyrlang_generator:from_values(Values),
+        restore_comp_targets(Env0, Env1, comp_clause_target_names(Clauses))
+    };
 eval_expr({gen_expr, Expr, Target, IterableExpr, Condition}, Env0) ->
     trace_eval_flow(gen_expr_start, Target),
     {Iterable, Env1} = eval_expr(IterableExpr, Env0),
     {Values, Env2} = eval_list_comp(Expr, Target, iter_values(Iterable), Condition, Env1, []),
     trace_eval_flow({gen_expr_values, length(Values)}, Values),
-    {pyrlang_generator:from_values(Values), restore_comp_targets(Env1, Env2, target_bound_names(Target))};
+    {
+        pyrlang_generator:from_values(Values),
+        restore_comp_targets(Env1, Env2, target_bound_names(Target))
+    };
 eval_expr({call, {var, <<"globals">>}, []}, Env) ->
     {globals_mapping(Env), Env};
 eval_expr({call, {var, <<"locals">>}, []}, Env) ->
@@ -212,7 +243,8 @@ restore_module_eval(Value) ->
 
 capture_closure_env(Env) ->
     case erlang:get(?MODULE_EVAL_KEY) of
-        true -> shallow_capture_env(Env);
+        true ->
+            shallow_capture_env(Env);
         _ ->
             case erlang:get(?FUNCTION_GLOBAL_ENV_KEY) of
                 undefined -> Env;
@@ -227,7 +259,8 @@ capture_lambda_closure_env(Env) ->
                 true -> module_identity_env(Env);
                 false -> capture_closure_env(Env)
             end;
-        _ -> capture_closure_env(Env)
+        _ ->
+            capture_closure_env(Env)
     end.
 
 function_closure_env(Env) ->
@@ -250,24 +283,38 @@ bind_function_globals({py_function, Params, Body, ClosureEnv} = Function, Env, G
         true -> Function;
         false -> {py_function, Params, Body, rebound_function_env(ClosureEnv, Env, GlobalEnv)}
     end;
-bind_function_globals({py_function, Params, Body, ClosureEnv, IsGenerator} = Function, Env, GlobalEnv) ->
+bind_function_globals(
+    {py_function, Params, Body, ClosureEnv, IsGenerator} = Function, Env, GlobalEnv
+) ->
     case preserve_function_module(ClosureEnv, Env) of
-        true -> Function;
-        false -> {py_function, Params, Body, rebound_function_env(ClosureEnv, Env, GlobalEnv), IsGenerator}
+        true ->
+            Function;
+        false ->
+            {py_function, Params, Body, rebound_function_env(ClosureEnv, Env, GlobalEnv),
+                IsGenerator}
     end;
-bind_function_globals({py_function, Params, Body, ClosureEnv, IsGenerator, OwnerClass} = Function, Env, GlobalEnv) ->
+bind_function_globals(
+    {py_function, Params, Body, ClosureEnv, IsGenerator, OwnerClass} = Function, Env, GlobalEnv
+) ->
     case preserve_function_module(ClosureEnv, Env) of
-        true -> Function;
-        false -> {py_function, Params, Body, rebound_function_env(ClosureEnv, Env, GlobalEnv), IsGenerator, OwnerClass}
+        true ->
+            Function;
+        false ->
+            {py_function, Params, Body, rebound_function_env(ClosureEnv, Env, GlobalEnv),
+                IsGenerator, OwnerClass}
     end;
 bind_function_globals(Value, _Env, _GlobalEnv) ->
     Value.
 
 rebound_function_env(ClosureEnv, Env, GlobalEnv) ->
-    preserve_function_identity(ClosureEnv, maps:merge(prune_closure_env(ClosureEnv, GlobalEnv), Env)).
+    preserve_function_identity(
+        ClosureEnv, maps:merge(prune_closure_env(ClosureEnv, GlobalEnv), Env)
+    ).
 
 preserve_function_module(ClosureEnv, Env) ->
-    case {maps:get(<<"__name__">>, ClosureEnv, undefined), maps:get(<<"__name__">>, Env, undefined)} of
+    case
+        {maps:get(<<"__name__">>, ClosureEnv, undefined), maps:get(<<"__name__">>, Env, undefined)}
+    of
         {FunctionModule, LookupModule} when is_binary(FunctionModule), is_binary(LookupModule) ->
             FunctionModule =/= LookupModule;
         _ ->
@@ -275,11 +322,14 @@ preserve_function_module(ClosureEnv, Env) ->
     end.
 
 shallow_global_value({py_function, Params, Body, ClosureEnv}, GlobalEnv) ->
-    {py_function, shallow_params(Params, GlobalEnv), Body, shallow_function_closure_env(ClosureEnv, GlobalEnv)};
+    {py_function, shallow_params(Params, GlobalEnv), Body,
+        shallow_function_closure_env(ClosureEnv, GlobalEnv)};
 shallow_global_value({py_function, Params, Body, ClosureEnv, IsGenerator}, GlobalEnv) ->
-    {py_function, shallow_params(Params, GlobalEnv), Body, shallow_function_closure_env(ClosureEnv, GlobalEnv), IsGenerator};
+    {py_function, shallow_params(Params, GlobalEnv), Body,
+        shallow_function_closure_env(ClosureEnv, GlobalEnv), IsGenerator};
 shallow_global_value({py_function, Params, Body, ClosureEnv, IsGenerator, OwnerClass}, GlobalEnv) ->
-    {py_function, shallow_params(Params, GlobalEnv), Body, shallow_function_closure_env(ClosureEnv, GlobalEnv), IsGenerator, OwnerClass};
+    {py_function, shallow_params(Params, GlobalEnv), Body,
+        shallow_function_closure_env(ClosureEnv, GlobalEnv), IsGenerator, OwnerClass};
 shallow_global_value(Value, _GlobalEnv) ->
     Value.
 
@@ -302,12 +352,13 @@ module_identity_env(Env) ->
     ).
 
 shallow_function_closure_env(ClosureEnv, GlobalEnv) ->
-    Captured = case maps:get(?MODULE_CLOSURE_MARKER, ClosureEnv, false) of
-        true ->
-            module_identity_env(ClosureEnv);
-        false ->
-            capture_local_closure_env(ClosureEnv, GlobalEnv)
-    end,
+    Captured =
+        case maps:get(?MODULE_CLOSURE_MARKER, ClosureEnv, false) of
+            true ->
+                module_identity_env(ClosureEnv);
+            false ->
+                capture_local_closure_env(ClosureEnv, GlobalEnv)
+        end,
     preserve_function_identity(ClosureEnv, Captured).
 
 preserve_function_identity(SourceEnv, TargetEnv) ->
@@ -327,9 +378,13 @@ capture_local_closure_env(Env, GlobalEnv) ->
         fun(Name, Value, Acc) ->
             Skip = Name =:= ?MODULE_CLOSURE_MARKER orelse Name =:= ?LOCAL_CLOSURE_NAMES,
             case Skip of
-                true -> Acc;
+                true ->
+                    Acc;
                 false ->
-                    case lists:member(Name, LocalNames) orelse not same_global_binding(Name, Value, GlobalEnv) of
+                    case
+                        lists:member(Name, LocalNames) orelse
+                            not same_global_binding(Name, Value, GlobalEnv)
+                    of
                         true -> Acc#{Name => Value};
                         false -> Acc
                     end
@@ -353,7 +408,8 @@ shallow_params(Params, GlobalEnv) ->
     [shallow_param(Param, GlobalEnv) || Param <- Params].
 
 shallow_param({param, Name, {default, Value}, Annotation}, GlobalEnv) ->
-    {param, Name, {default, shallow_global_value(Value, GlobalEnv)}, shallow_global_value(Annotation, GlobalEnv)};
+    {param, Name, {default, shallow_global_value(Value, GlobalEnv)},
+        shallow_global_value(Annotation, GlobalEnv)};
 shallow_param({param, Name, Default, Annotation}, GlobalEnv) ->
     {param, Name, Default, shallow_global_value(Annotation, GlobalEnv)};
 shallow_param(Param, _GlobalEnv) ->
@@ -392,12 +448,16 @@ sync_function_stack_env(Env) ->
 eval_statements_inner([], Env, Last) ->
     {Last, Env};
 eval_statements_inner([{def, Name, Params, Body} | Rest], Env0, _Last) ->
-    {Function, DefaultsEnv} = make_function_with_env(Name, Params, Body, Env0, contains_yield(Body)),
+    {Function, DefaultsEnv} = make_function_with_env(
+        Name, Params, Body, Env0, contains_yield(Body)
+    ),
     Env1 = DefaultsEnv#{Name => Function},
     sync_current_loading_module_env(Env1),
     eval_statements(Rest, Env1, Function);
 eval_statements_inner([{def, Name, Params, Body, Decorators} | Rest], Env0, _Last) ->
-    {Function, DefaultsEnv} = make_function_with_env(Name, Params, Body, Env0, contains_yield(Body)),
+    {Function, DefaultsEnv} = make_function_with_env(
+        Name, Params, Body, Env0, contains_yield(Body)
+    ),
     {Decorated, Env1} = apply_decorators(Decorators, Function, DefaultsEnv),
     Env2 = Env1#{Name => Decorated},
     sync_current_loading_module_env(Env2),
@@ -418,18 +478,24 @@ eval_statements_inner([{class, Name, BaseExprs, MetaclassExpr, Body} | Rest], En
     Env2 = Env1#{Name => Class},
     sync_current_loading_module_env(Env2),
     eval_statements(Rest, Env2, Class);
-eval_statements_inner([{class, Name, BaseExprs, MetaclassExpr, Body, Decorators} | Rest], Env0, _Last) ->
+eval_statements_inner(
+    [{class, Name, BaseExprs, MetaclassExpr, Body, Decorators} | Rest], Env0, _Last
+) ->
     {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, [], Body, Env0),
     {Decorated, Env2} = apply_decorators(Decorators, Class, Env1),
     Env3 = Env2#{Name => Decorated},
     sync_current_loading_module_env(Env3),
     eval_statements(Rest, Env3, Decorated);
-eval_statements_inner([{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, []} | Rest], Env0, _Last) ->
+eval_statements_inner(
+    [{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, []} | Rest], Env0, _Last
+) ->
     {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Env0),
     Env2 = Env1#{Name => Class},
     sync_current_loading_module_env(Env2),
     eval_statements(Rest, Env2, Class);
-eval_statements_inner([{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Decorators} | Rest], Env0, _Last) ->
+eval_statements_inner(
+    [{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Decorators} | Rest], Env0, _Last
+) ->
     {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Env0),
     {Decorated, Env2} = apply_decorators(Decorators, Class, Env1),
     Env3 = Env2#{Name => Decorated},
@@ -485,23 +551,42 @@ eval_statements_inner([{assign_target, Target, Expr} | Rest], Env0, _Last) ->
     eval_statements(Rest, Env2, Value);
 eval_statements_inner([{assign_chain, Targets, Expr} | Rest], Env0, _Last) ->
     {Value, Env1} = eval_expr(Expr, Env0),
-    Env2 = lists:foldl(fun(Target, AccEnv) -> bind_assignment_target(Target, Value, AccEnv) end, Env1, Targets),
+    Env2 = lists:foldl(
+        fun(Target, AccEnv) -> bind_assignment_target(Target, Value, AccEnv) end, Env1, Targets
+    ),
     eval_statements(Rest, Env2, Value);
 eval_statements_inner([{assign_attr, {attr, ObjectExpr, Name}, Expr} | Rest], Env0, _Last) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Value, Env2} = eval_expr(Expr, Env1),
     ok = pyrlang_object:set_attr(Object, Name, Value),
     eval_statements(Rest, Env2, Value);
-eval_statements_inner([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest], Env0, _Last) ->
+eval_statements_inner(
+    [{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest],
+    Env0,
+    _Last
+) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Start, Env2} = eval_optional_slice(StartExpr, Env1),
     {Stop, Env3} = eval_optional_slice(StopExpr, Env2),
     {Value, Env4} = eval_expr(Expr, Env3),
     ok = set_slice_or_raise(Object, Start, Stop, Value),
     eval_statements(Rest, Env4, Value);
-eval_statements_inner([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}, Expr} | Rest], Env0, Last) ->
-    eval_statements([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest], Env0, Last);
-eval_statements_inner([{assign_subscript, {subscript, ObjectExpr, IndexExpr}, Expr} | Rest], Env0, _Last) ->
+eval_statements_inner(
+    [
+        {assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}, Expr}
+        | Rest
+    ],
+    Env0,
+    Last
+) ->
+    eval_statements(
+        [{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest],
+        Env0,
+        Last
+    );
+eval_statements_inner(
+    [{assign_subscript, {subscript, ObjectExpr, IndexExpr}, Expr} | Rest], Env0, _Last
+) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Index, Env2} = eval_expr(IndexExpr, Env1),
     {Value, Env3} = eval_expr(Expr, Env2),
@@ -607,7 +692,12 @@ lookup_var(Name, Env) ->
                                             Value;
                                         error ->
                                             trace_name_miss(Name, Env),
-                                            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"NameError">>), <<"name '", Name/binary, "' is not defined">>))
+                                            pyrlang_exception:raise(
+                                                pyrlang_exception:make(
+                                                    pyrlang_exception:type(<<"NameError">>),
+                                                    <<"name '", Name/binary, "' is not defined">>
+                                                )
+                                            )
                                     end
                             end
                     end
@@ -718,11 +808,15 @@ globals_mapping(Env) ->
             {py_module_dict, ModuleRef};
         _ ->
             case maps:get(<<"__name__">>, Env, undefined) of
-                undefined -> pyrlang_heap:dict(Env);
-                <<"__main__">> -> pyrlang_heap:dict(Env);
+                undefined ->
+                    pyrlang_heap:dict(Env);
+                <<"__main__">> ->
+                    pyrlang_heap:dict(Env);
                 ModuleName ->
-                    try {py_module_dict, pyrlang_module:load(ModuleName)}
-                    catch _:_ -> pyrlang_heap:dict(Env)
+                    try
+                        {py_module_dict, pyrlang_module:load(ModuleName)}
+                    catch
+                        _:_ -> pyrlang_heap:dict(Env)
                     end
             end
     end.
@@ -872,7 +966,9 @@ match_class_attr_patterns(Subject, [{Name, Pattern} | Rest], Env0, Bindings0) ->
         {ok, Value} ->
             case match_pattern(Pattern, Value, Env0) of
                 {match, NewBindings, Env1} ->
-                    match_class_attr_patterns(Subject, Rest, Env1, maps:merge(Bindings0, NewBindings));
+                    match_class_attr_patterns(
+                        Subject, Rest, Env1, maps:merge(Bindings0, NewBindings)
+                    );
                 {nomatch, Env1} ->
                     {nomatch, Env1}
             end;
@@ -945,12 +1041,22 @@ create_class(Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Env0) ->
                         {pyrlang_object:new_class(Name, EffectiveBases, Attrs), Env2, undefined};
                     InheritedMetaclass ->
                         trace_class(metaclass, Name, Env2),
-                        {call_metaclass(InheritedMetaclass, Name, ExplicitBases, Attrs, ClassKwArgs), Env2, InheritedMetaclass}
+                        {
+                            call_metaclass(
+                                InheritedMetaclass, Name, ExplicitBases, Attrs, ClassKwArgs
+                            ),
+                            Env2,
+                            InheritedMetaclass
+                        }
                 end;
             _ ->
                 trace_class(explicit_metaclass, Name, Env2),
                 {Metaclass, Env3} = eval_expr(MetaclassExpr, Env2),
-                {call_metaclass(Metaclass, Name, ExplicitBases, Attrs, ClassKwArgs), Env3, Metaclass}
+                {
+                    call_metaclass(Metaclass, Name, ExplicitBases, Attrs, ClassKwArgs),
+                    Env3,
+                    Metaclass
+                }
         end,
     trace_class(created, Name, EnvAfter),
     maybe_set_metaclass(Class, SelectedMetaclass),
@@ -1001,8 +1107,17 @@ remove_class_attr(Name, Attrs) ->
     (maps:remove(Name, Attrs))#{?CLASS_ATTR_ORDER_KEY => [Key || Key <- Order, Key =/= Name]}.
 
 class_attr_order(Attrs) ->
-    Ordered = [Name || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Attrs)],
-    Ordered ++ [Name || Name <- maps:keys(Attrs), Name =/= ?CLASS_ATTR_ORDER_KEY, not lists:member(Name, Ordered)].
+    Ordered = [
+        Name
+     || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Attrs)
+    ],
+    Ordered ++
+        [
+            Name
+         || Name <- maps:keys(Attrs),
+            Name =/= ?CLASS_ATTR_ORDER_KEY,
+            not lists:member(Name, Ordered)
+        ].
 
 is_class_internal_attr(<<"__pyrlang_", _Rest/binary>>) ->
     true;
@@ -1016,8 +1131,12 @@ make_type_alias(Name, Expr, Env) ->
                 class ->
                     Alias = pyrlang_object:instantiate(Class),
                     ok = pyrlang_object:set_attr(Alias, <<"__name__">>, Name),
-                    ok = pyrlang_object:set_attr(Alias, <<"__module__">>, maps:get(<<"__name__">>, Env, <<"__main__">>)),
-                    ok = pyrlang_object:set_attr(Alias, <<"__value__">>, {py_lazy_type_alias_value, Expr, Env}),
+                    ok = pyrlang_object:set_attr(
+                        Alias, <<"__module__">>, maps:get(<<"__name__">>, Env, <<"__main__">>)
+                    ),
+                    ok = pyrlang_object:set_attr(
+                        Alias, <<"__value__">>, {py_lazy_type_alias_value, Expr, Env}
+                    ),
                     ok = pyrlang_object:set_attr(Alias, <<"__type_params__">>, {}),
                     Alias;
                 _ ->
@@ -1076,12 +1195,16 @@ call_metaclass(Metaclass, Name, Bases, Attrs0, KwArgs) ->
 prepare_classdict_attrs(Metaclass, Attrs, Bases) ->
     Prepared =
         case is_enum_metaclass(Metaclass) of
-        true ->
-            MemberNames = enum_member_names(Attrs),
-            Attrs1 = expand_enum_auto_values(Attrs, MemberNames, Bases),
-            maps:put(<<"_member_names">>, pyrlang_heap:dict([{Name, none} || Name <- MemberNames]), Attrs1);
-        false ->
-            Attrs
+            true ->
+                MemberNames = enum_member_names(Attrs),
+                Attrs1 = expand_enum_auto_values(Attrs, MemberNames, Bases),
+                maps:put(
+                    <<"_member_names">>,
+                    pyrlang_heap:dict([{Name, none} || Name <- MemberNames]),
+                    Attrs1
+                );
+            false ->
+                Attrs
         end,
     class_attrs_public(Prepared).
 
@@ -1183,7 +1306,9 @@ maybe_set_metaclass(Class, Metaclass) ->
 bind_class_name(Class, Name) ->
     Data = pyrlang_heap:data(Class),
     Attrs = maps:get(attrs, Data),
-    UpdatedAttrs = maps:map(fun(_AttrName, Value) -> bind_class_name_in_value(Value, Name, Class) end, Attrs),
+    UpdatedAttrs = maps:map(
+        fun(_AttrName, Value) -> bind_class_name_in_value(Value, Name, Class) end, Attrs
+    ),
     ok = pyrlang_heap:set_data(Class, Data#{attrs := UpdatedAttrs}).
 
 bind_class_name_in_value({py_function, Params, Body, Env}, Name, Class) ->
@@ -1193,7 +1318,10 @@ bind_class_name_in_value({py_function, Params, Body, Env, IsGenerator}, Name, Cl
 bind_class_name_in_value({py_function, Params, Body, Env, IsGenerator, OwnerClass}, Name, Class) ->
     {py_function, Params, Body, Env#{Name => Class}, IsGenerator, OwnerClass};
 bind_class_name_in_value(#{py_descriptor := true, kind := property} = Descriptor, Name, Class) ->
-    case maps:is_key(fget, Descriptor) orelse maps:is_key(fset, Descriptor) orelse maps:is_key(fdel, Descriptor) of
+    case
+        maps:is_key(fget, Descriptor) orelse maps:is_key(fset, Descriptor) orelse
+            maps:is_key(fdel, Descriptor)
+    of
         true -> bind_property_descriptor_class(Descriptor, Name, Class);
         false -> Descriptor
     end;
@@ -1259,7 +1387,8 @@ get_attribute(Object, Name) ->
                 {ok, Value} ->
                     Value;
                 error ->
-                    try pyrlang_object:get_attr(Object, Name)
+                    try
+                        pyrlang_object:get_attr(Object, Name)
                     catch
                         error:{attribute_error, Attr} ->
                             trace_attr_miss(Object, Attr),
@@ -1313,7 +1442,9 @@ describe_attr_object(Object) when is_map(Object) ->
 describe_attr_object(Object) ->
     unicode:characters_to_binary(io_lib:format("~p", [Object])).
 
-descriptor_attribute(#{py_descriptor := true, kind := property, get := Get} = Descriptor, <<"setter">>) ->
+descriptor_attribute(
+    #{py_descriptor := true, kind := property, get := Get} = Descriptor, <<"setter">>
+) ->
     {ok, fun(Setter) ->
         Del = maps:get(del, Descriptor, undefined),
         pyrlang_object:descriptor(
@@ -1329,7 +1460,9 @@ descriptor_attribute(#{py_descriptor := true, kind := property, get := Get} = De
             }
         )
     end};
-descriptor_attribute(#{py_descriptor := true, kind := property, set := Set} = Descriptor, <<"getter">>) ->
+descriptor_attribute(
+    #{py_descriptor := true, kind := property, set := Set} = Descriptor, <<"getter">>
+) ->
     {ok, fun(Getter) ->
         Del = maps:get(del, Descriptor, undefined),
         pyrlang_object:descriptor(
@@ -1342,7 +1475,9 @@ descriptor_attribute(#{py_descriptor := true, kind := property, set := Set} = De
             }
         )
     end};
-descriptor_attribute(#{py_descriptor := true, kind := property, get := Get} = Descriptor, <<"deleter">>) ->
+descriptor_attribute(
+    #{py_descriptor := true, kind := property, get := Get} = Descriptor, <<"deleter">>
+) ->
     {ok, fun(Deleter) ->
         Set = maps:get(set, Descriptor, undefined),
         pyrlang_object:descriptor(
@@ -1440,9 +1575,11 @@ builtin_attribute(Binary, <<"format">>) when is_binary(Binary) ->
 builtin_attribute(Binary, <<"format_map">>) when is_binary(Binary) ->
     {ok, fun(Mapping) -> string_format(Binary, [], mapping_to_map(Mapping)) end};
 builtin_attribute(Binary, <<"encode">>) when is_binary(Binary) ->
-    {ok, {py_native_call, fun(Args, KwArgs) -> binary_codec_call(Binary, Args, KwArgs, encode) end}};
+    {ok,
+        {py_native_call, fun(Args, KwArgs) -> binary_codec_call(Binary, Args, KwArgs, encode) end}};
 builtin_attribute(Binary, <<"decode">>) when is_binary(Binary) ->
-    {ok, {py_native_call, fun(Args, KwArgs) -> binary_codec_call(Binary, Args, KwArgs, decode) end}};
+    {ok,
+        {py_native_call, fun(Args, KwArgs) -> binary_codec_call(Binary, Args, KwArgs, decode) end}};
 builtin_attribute(Binary, <<"translate">>) when is_binary(Binary) ->
     {ok, fun(Table) -> string_translate(Binary, Table) end};
 builtin_attribute(Binary, <<"__iter__">>) when is_binary(Binary) ->
@@ -1495,11 +1632,12 @@ builtin_attribute(#{py_exception := true} = Exception, Attr) ->
 builtin_attribute(_Object, <<"__doc__">>) ->
     {ok, none};
 builtin_attribute({py_module_dict, ModuleRef}, <<"get">>) ->
-    {ok, {py_native_varargs, fun
-        ([Key]) -> maps:get(Key, pyrlang_module:env(ModuleRef), none);
-        ([Key, Default]) -> maps:get(Key, pyrlang_module:env(ModuleRef), Default);
-        (Args) -> erlang:error({arity_error, {module_dict_get, length(Args)}})
-    end}};
+    {ok,
+        {py_native_varargs, fun
+            ([Key]) -> maps:get(Key, pyrlang_module:env(ModuleRef), none);
+            ([Key, Default]) -> maps:get(Key, pyrlang_module:env(ModuleRef), Default);
+            (Args) -> erlang:error({arity_error, {module_dict_get, length(Args)}})
+        end}};
 builtin_attribute({py_module_dict, ModuleRef}, <<"items">>) ->
     {ok, fun() -> pyrlang_heap:list(maps:to_list(pyrlang_module:env(ModuleRef))) end};
 builtin_attribute({py_module_dict, ModuleRef}, <<"keys">>) ->
@@ -1509,17 +1647,24 @@ builtin_attribute({py_module_dict, ModuleRef}, <<"values">>) ->
 builtin_attribute({py_module_dict, ModuleRef}, <<"copy">>) ->
     {ok, fun() -> pyrlang_heap:dict(maps:to_list(pyrlang_module:env(ModuleRef))) end};
 builtin_attribute({py_module_dict, ModuleRef}, <<"update">>) ->
-    {ok, {py_native_call, fun(Args, KwArgs) ->
-        lists:foreach(fun({Key, Value}) -> ok = pyrlang_module:set_attr(ModuleRef, Key, Value) end, module_dict_update_items(Args)),
-        maps:foreach(fun(Key, Value) -> ok = pyrlang_module:set_attr(ModuleRef, Key, Value) end, KwArgs),
-        none
-    end}};
+    {ok,
+        {py_native_call, fun(Args, KwArgs) ->
+            lists:foreach(
+                fun({Key, Value}) -> ok = pyrlang_module:set_attr(ModuleRef, Key, Value) end,
+                module_dict_update_items(Args)
+            ),
+            maps:foreach(
+                fun(Key, Value) -> ok = pyrlang_module:set_attr(ModuleRef, Key, Value) end, KwArgs
+            ),
+            none
+        end}};
 builtin_attribute({py_module_dict, ModuleRef}, <<"pop">>) ->
-    {ok, {py_native_varargs, fun
-        ([Key]) -> module_dict_pop(ModuleRef, Key);
-        ([Key, Default]) -> module_dict_pop(ModuleRef, Key, Default);
-        (Args) -> erlang:error({arity_error, {module_dict_pop, length(Args)}})
-    end}};
+    {ok,
+        {py_native_varargs, fun
+            ([Key]) -> module_dict_pop(ModuleRef, Key);
+            ([Key, Default]) -> module_dict_pop(ModuleRef, Key, Default);
+            (Args) -> erlang:error({arity_error, {module_dict_pop, length(Args)}})
+        end}};
 builtin_attribute({py_module_dict, ModuleRef}, <<"__getitem__">>) ->
     {ok, fun(Key) ->
         case maps:find(Key, pyrlang_module:env(ModuleRef)) of
@@ -1532,11 +1677,12 @@ builtin_attribute({py_module_dict, ModuleRef}, <<"__setitem__">>) ->
 builtin_attribute({py_module_dict, ModuleRef}, <<"__contains__">>) ->
     {ok, fun(Key) -> maps:is_key(Key, pyrlang_module:env(ModuleRef)) end};
 builtin_attribute({py_instance_dict, Instance}, <<"get">>) ->
-    {ok, {py_native_varargs, fun
-        ([Key]) -> maps:get(Key, instance_dict_attrs(Instance), none);
-        ([Key, Default]) -> maps:get(Key, instance_dict_attrs(Instance), Default);
-        (Args) -> erlang:error({arity_error, {instance_dict_get, length(Args)}})
-    end}};
+    {ok,
+        {py_native_varargs, fun
+            ([Key]) -> maps:get(Key, instance_dict_attrs(Instance), none);
+            ([Key, Default]) -> maps:get(Key, instance_dict_attrs(Instance), Default);
+            (Args) -> erlang:error({arity_error, {instance_dict_get, length(Args)}})
+        end}};
 builtin_attribute({py_instance_dict, Instance}, <<"items">>) ->
     {ok, fun() -> pyrlang_heap:list(maps:to_list(instance_dict_attrs(Instance))) end};
 builtin_attribute({py_instance_dict, Instance}, <<"keys">>) ->
@@ -1546,17 +1692,24 @@ builtin_attribute({py_instance_dict, Instance}, <<"values">>) ->
 builtin_attribute({py_instance_dict, Instance}, <<"copy">>) ->
     {ok, fun() -> pyrlang_heap:dict(maps:to_list(instance_dict_attrs(Instance))) end};
 builtin_attribute({py_instance_dict, Instance}, <<"update">>) ->
-    {ok, {py_native_call, fun(Args, KwArgs) ->
-        lists:foreach(fun({Key, Value}) -> ok = pyrlang_object:set_attr(Instance, Key, Value) end, module_dict_update_items(Args)),
-        maps:foreach(fun(Key, Value) -> ok = pyrlang_object:set_attr(Instance, Key, Value) end, KwArgs),
-        none
-    end}};
+    {ok,
+        {py_native_call, fun(Args, KwArgs) ->
+            lists:foreach(
+                fun({Key, Value}) -> ok = pyrlang_object:set_attr(Instance, Key, Value) end,
+                module_dict_update_items(Args)
+            ),
+            maps:foreach(
+                fun(Key, Value) -> ok = pyrlang_object:set_attr(Instance, Key, Value) end, KwArgs
+            ),
+            none
+        end}};
 builtin_attribute({py_instance_dict, Instance}, <<"pop">>) ->
-    {ok, {py_native_varargs, fun
-        ([Key]) -> instance_dict_pop(Instance, Key);
-        ([Key, Default]) -> instance_dict_pop(Instance, Key, Default);
-        (Args) -> erlang:error({arity_error, {instance_dict_pop, length(Args)}})
-    end}};
+    {ok,
+        {py_native_varargs, fun
+            ([Key]) -> instance_dict_pop(Instance, Key);
+            ([Key, Default]) -> instance_dict_pop(Instance, Key, Default);
+            (Args) -> erlang:error({arity_error, {instance_dict_pop, length(Args)}})
+        end}};
 builtin_attribute({py_instance_dict, Instance}, <<"__getitem__">>) ->
     {ok, fun(Key) ->
         Attrs = instance_dict_attrs(Instance),
@@ -1709,9 +1862,14 @@ trim_chars(Binary, Chars, Direction) ->
     TrimChars = unicode:characters_to_list(Chars),
     Trimmed =
         case Direction of
-            leading -> trim_chars_left(List, TrimChars);
-            trailing -> lists:reverse(trim_chars_left(lists:reverse(List), TrimChars));
-            both -> lists:reverse(trim_chars_left(lists:reverse(trim_chars_left(List, TrimChars)), TrimChars))
+            leading ->
+                trim_chars_left(List, TrimChars);
+            trailing ->
+                lists:reverse(trim_chars_left(lists:reverse(List), TrimChars));
+            both ->
+                lists:reverse(
+                    trim_chars_left(lists:reverse(trim_chars_left(List, TrimChars)), TrimChars)
+                )
         end,
     unicode:characters_to_binary(Trimmed).
 
@@ -1754,8 +1912,10 @@ binary_codec_check_duplicate_args(Args, KwArgs, Name) ->
     Positional = lists:sublist([<<"encoding">>, <<"errors">>], length(Args)),
     Duplicates = [Key || Key <- Positional, maps:is_key(Key, KwArgs)],
     case Duplicates of
-        [] -> ok;
-        [Duplicate | _] -> erlang:error({type_error, {Name, multiple_values_for_argument, Duplicate}})
+        [] ->
+            ok;
+        [Duplicate | _] ->
+            erlang:error({type_error, {Name, multiple_values_for_argument, Duplicate}})
     end.
 
 translation_map({py_ref, _} = Ref) ->
@@ -1788,7 +1948,10 @@ replace_limited(Binary, Old, New, Count) ->
     end.
 
 string_split(Binary, []) ->
-    pyrlang_heap:list([unicode:characters_to_binary(Part) || Part <- string:tokens(unicode:characters_to_list(Binary), " \t\r\n")]);
+    pyrlang_heap:list([
+        unicode:characters_to_binary(Part)
+     || Part <- string:tokens(unicode:characters_to_list(Binary), " \t\r\n")
+    ]);
 string_split(Binary, [none]) ->
     string_split(Binary, []);
 string_split(Binary, [none, MaxSplit]) ->
@@ -1827,7 +1990,10 @@ split_limit(Value) when is_float(Value) -> trunc(Value);
 split_limit(_Value) -> -1.
 
 split_whitespace(Binary, Limit) when Limit < 0 ->
-    [unicode:characters_to_binary(Part) || Part <- string:tokens(unicode:characters_to_list(Binary), " \t\r\n\v\f")];
+    [
+        unicode:characters_to_binary(Part)
+     || Part <- string:tokens(unicode:characters_to_list(Binary), " \t\r\n\v\f")
+    ];
 split_whitespace(Binary, Limit) ->
     split_whitespace_limited(skip_left_ws(Binary), Limit, []).
 
@@ -1980,7 +2146,8 @@ string_rfind(Binary, [Needle, Start, Stop]) ->
     Sliced = get_slice(Binary, Start, Stop),
     Offset = string_slice_offset(Binary, Start),
     case binary:matches(Sliced, py_string(Needle)) of
-        [] -> -1;
+        [] ->
+            -1;
         Matches ->
             {Pos, _Size} = lists:last(Matches),
             Pos + Offset
@@ -2080,11 +2247,17 @@ string_isdigit(Binary) ->
     lists:all(fun(Ch) -> Ch >= $0 andalso Ch =< $9 end, binary_to_list(Binary)).
 
 string_isupper(Binary) ->
-    Letters = [Ch || Ch <- binary_to_list(Binary), (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z)],
+    Letters = [
+        Ch
+     || Ch <- binary_to_list(Binary), (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z)
+    ],
     Letters =/= [] andalso lists:all(fun(Ch) -> Ch >= $A andalso Ch =< $Z end, Letters).
 
 string_islower(Binary) ->
-    Letters = [Ch || Ch <- binary_to_list(Binary), (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z)],
+    Letters = [
+        Ch
+     || Ch <- binary_to_list(Binary), (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z)
+    ],
     Letters =/= [] andalso lists:all(fun(Ch) -> Ch >= $a andalso Ch =< $z end, Letters).
 
 string_title(Binary) ->
@@ -2132,9 +2305,13 @@ string_isidentifier(<<>>) ->
 string_isidentifier(Binary) ->
     [First | Rest] = binary_to_list(Binary),
     (First =:= $_ orelse (First >= $A andalso First =< $Z) orelse (First >= $a andalso First =< $z)) andalso
-        lists:all(fun(Ch) ->
-            Ch =:= $_ orelse (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z) orelse (Ch >= $0 andalso Ch =< $9)
-        end, Rest).
+        lists:all(
+            fun(Ch) ->
+                Ch =:= $_ orelse (Ch >= $A andalso Ch =< $Z) orelse (Ch >= $a andalso Ch =< $z) orelse
+                    (Ch >= $0 andalso Ch =< $9)
+            end,
+            Rest
+        ).
 
 string_isascii(Binary) ->
     lists:all(fun(Byte) -> Byte < 128 end, binary_to_list(Binary)).
@@ -2195,7 +2372,9 @@ string_format_field_value(Name, Args, KwArgs, Index) ->
 
 string_format_field_text(Value, none, Spec) ->
     format_brace_value(Value, Spec);
-string_format_field_text(Value, Conversion, Spec) when Conversion =:= $s; Conversion =:= $r; Conversion =:= $a ->
+string_format_field_text(Value, Conversion, Spec) when
+    Conversion =:= $s; Conversion =:= $r; Conversion =:= $a
+->
     format_brace_value(py_string(Value), Spec);
 string_format_field_text(Value, _Conversion, Spec) ->
     format_brace_value(Value, Spec).
@@ -2221,7 +2400,8 @@ integer_format_spec(Value, Spec) ->
     Chars = binary_to_list(Spec),
     {Type, Prefix} =
         case Chars of
-            [] -> {$d, []};
+            [] ->
+                {$d, []};
             _ ->
                 Last = lists:last(Chars),
                 case lists:member(Last, "dioxX") of
@@ -2271,8 +2451,10 @@ pad_left(Text, Width, PadChar) ->
     end.
 
 binary_to_integer_or_error(Binary) ->
-    try {ok, binary_to_integer(Binary)}
-    catch error:_ -> error
+    try
+        {ok, binary_to_integer(Binary)}
+    catch
+        error:_ -> error
     end.
 
 mapping_to_map({py_ref, _} = Ref) ->
@@ -2355,7 +2537,8 @@ join_binary([Part | Rest], Sep) ->
     lists:foldl(fun(Next, Acc) -> <<Acc/binary, Sep/binary, Next/binary>> end, Part, Rest).
 
 get_subscript_or_raise(Object, Index) ->
-    try get_subscript(Object, Index)
+    try
+        get_subscript(Object, Index)
     catch
         error:{badkey, Key} ->
             trace_key_miss(Object, Key),
@@ -2374,7 +2557,12 @@ trace_key_miss(Object, Key) ->
             io:format(
                 standard_error,
                 "PYRLANG_KEY_MISS object=~s key=~p keys=~p stack=~p~n",
-                [describe_attr_object(Object), Key, trace_mapping_keys(Object), trace_function_stack()]
+                [
+                    describe_attr_object(Object),
+                    Key,
+                    trace_mapping_keys(Object),
+                    trace_function_stack()
+                ]
             )
     end.
 
@@ -2431,7 +2619,12 @@ raise_current_exception(Env) ->
                 {ok, Exception} ->
                     pyrlang_exception:raise(Exception);
                 error ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"RuntimeError">>), <<"No active exception to reraise">>))
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(
+                            pyrlang_exception:type(<<"RuntimeError">>),
+                            <<"No active exception to reraise">>
+                        )
+                    )
             end
     end.
 
@@ -2446,7 +2639,8 @@ trace_function_label(Function) ->
     <<Module/binary, ".", QualName/binary>>.
 
 set_subscript_or_raise(Object, Index, Value) ->
-    try set_subscript(Object, Index, Value)
+    try
+        set_subscript(Object, Index, Value)
     catch
         error:{index_error, BadIndex} ->
             raise_builtin(<<"IndexError">>, BadIndex);
@@ -2465,12 +2659,18 @@ dict_ref_has_class(Ref) ->
 
 get_subscript({py_ref, _} = Ref, Index) ->
     case pyrlang_heap:type(Ref) of
-        class -> get_class_subscript(Ref, Index);
+        class ->
+            get_class_subscript(Ref, Index);
         list ->
             case slice_object_parts(Index) of
-                {ok, {Start, Stop, none}} -> pyrlang_heap:list(slice_values(pyrlang_heap:list_items(Ref), Start, Stop));
-                {ok, {Start, Stop, Step}} -> pyrlang_heap:list(slice_values(pyrlang_heap:list_items(Ref), Start, Stop, Step));
-                error -> pyrlang_heap:list_get(Ref, list_index(Index))
+                {ok, {Start, Stop, none}} ->
+                    pyrlang_heap:list(slice_values(pyrlang_heap:list_items(Ref), Start, Stop));
+                {ok, {Start, Stop, Step}} ->
+                    pyrlang_heap:list(
+                        slice_values(pyrlang_heap:list_items(Ref), Start, Stop, Step)
+                    );
+                error ->
+                    pyrlang_heap:list_get(Ref, list_index(Index))
             end;
         dict ->
             case dict_ref_has_class(Ref) of
@@ -2489,7 +2689,8 @@ get_subscript({py_ref, _} = Ref, Index) ->
                             get_instance_subscript(Ref, Index)
                     end
             end;
-        Type -> erlang:error({type_error, {not_subscriptable, Type}})
+        Type ->
+            erlang:error({type_error, {not_subscriptable, Type}})
     end;
 get_subscript({py_instance_dict, Instance}, Key) ->
     Data = pyrlang_heap:data(Instance),
@@ -2498,8 +2699,10 @@ get_subscript({py_module_dict, ModuleRef}, Key) ->
     maps:get(Key, pyrlang_module:env(ModuleRef));
 get_subscript(Binary, Index) when is_binary(Binary) ->
     case slice_object_parts(Index) of
-        {ok, {Start, Stop, none}} -> get_slice(Binary, Start, Stop);
-        {ok, {Start, Stop, Step}} -> get_slice(Binary, Start, Stop, Step);
+        {ok, {Start, Stop, none}} ->
+            get_slice(Binary, Start, Stop);
+        {ok, {Start, Stop, Step}} ->
+            get_slice(Binary, Start, Stop, Step);
         error ->
             Units = binary_slice_units(Binary),
             lists:nth(normalize_index(list_index(Index), length(Units)) + 1, Units)
@@ -2516,7 +2719,10 @@ get_subscript(Other, _Index) ->
 slice_object_parts({py_ref, _} = Ref) ->
     try pyrlang_builtins:object_class(Ref) of
         Class ->
-            case pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= <<"slice">> of
+            case
+                pyrlang_heap:type(Class) =:= class andalso
+                    pyrlang_object:class_name(Class) =:= <<"slice">>
+            of
                 true ->
                     {ok, {
                         pyrlang_object:get_attr(Ref, <<"start">>),
@@ -2534,7 +2740,8 @@ slice_object_parts(_Index) ->
 
 get_instance_subscript(Ref, Index) ->
     case maybe_typing_alias_subscript(Ref, Index) of
-        {ok, Alias} -> Alias;
+        {ok, Alias} ->
+            Alias;
         error ->
             try pyrlang_object:get_attr(Ref, <<"__getitem__">>) of
                 GetItem -> call_value(GetItem, [Index])
@@ -2543,8 +2750,10 @@ get_instance_subscript(Ref, Index) ->
                     erlang:error({type_error, {not_subscriptable, Ref}});
                 throw:{py_exception, Exception} ->
                     case pyrlang_exception:exception_type(Exception) of
-                        <<"AttributeError">> -> erlang:error({type_error, {not_subscriptable, Ref}});
-                        _ -> pyrlang_exception:raise(Exception)
+                        <<"AttributeError">> ->
+                            erlang:error({type_error, {not_subscriptable, Ref}});
+                        _ ->
+                            pyrlang_exception:raise(Exception)
                     end
             end
     end.
@@ -2582,10 +2791,12 @@ get_slice({py_ref, _} = Ref, Start, Stop) ->
             pyrlang_heap:list(slice_values(pyrlang_heap:list_items(Ref), Start, Stop));
         instance ->
             case tuple_subclass_items(Ref) of
-                {ok, Items} -> list_to_tuple(slice_values(Items, Start, Stop));
+                {ok, Items} ->
+                    list_to_tuple(slice_values(Items, Start, Stop));
                 error ->
                     case string_subclass_value(Ref) of
-                        {ok, Value} -> get_slice(Value, Start, Stop);
+                        {ok, Value} ->
+                            get_slice(Value, Start, Stop);
                         error ->
                             case call_slice_getitem(Ref, Start, Stop, none) of
                                 {ok, Value} ->
@@ -2614,10 +2825,12 @@ get_slice({py_ref, _} = Ref, Start, Stop, Step) ->
             pyrlang_heap:list(slice_values(pyrlang_heap:list_items(Ref), Start, Stop, Step));
         instance ->
             case tuple_subclass_items(Ref) of
-                {ok, Items} -> list_to_tuple(slice_values(Items, Start, Stop, Step));
+                {ok, Items} ->
+                    list_to_tuple(slice_values(Items, Start, Stop, Step));
                 error ->
                     case string_subclass_value(Ref) of
-                        {ok, Value} -> get_slice(Value, Start, Stop, Step);
+                        {ok, Value} ->
+                            get_slice(Value, Start, Stop, Step);
                         error ->
                             case call_slice_getitem(Ref, Start, Stop, Step) of
                                 {ok, Value} ->
@@ -2654,7 +2867,9 @@ call_slice_getitem(Ref, Start, Stop, Step) ->
     try pyrlang_object:get_attr(Ref, <<"__getitem__">>) of
         Getitem ->
             {ok, SliceClass} = pyrlang_builtins:lookup(<<"slice">>),
-            Slice = call_value(SliceClass, [slice_bound(Start), slice_bound(Stop), slice_bound(Step)]),
+            Slice = call_value(SliceClass, [
+                slice_bound(Start), slice_bound(Stop), slice_bound(Step)
+            ]),
             {ok, call_value(Getitem, [Slice])}
     catch
         error:{attribute_error, _Name} -> error
@@ -2749,7 +2964,8 @@ clamp_negative_step_slice_index(Index, Length) ->
 
 set_subscript({py_ref, _} = Ref, Index, Value) ->
     case pyrlang_heap:type(Ref) of
-        list -> pyrlang_heap:list_set(Ref, list_index(Index), Value);
+        list ->
+            pyrlang_heap:list_set(Ref, list_index(Index), Value);
         dict ->
             case dict_ref_has_class(Ref) of
                 true ->
@@ -2760,7 +2976,8 @@ set_subscript({py_ref, _} = Ref, Index, Value) ->
             end;
         instance ->
             Setter =
-                try pyrlang_object:get_attr(Ref, <<"__setitem__">>)
+                try
+                    pyrlang_object:get_attr(Ref, <<"__setitem__">>)
                 catch
                     error:{attribute_error, <<"__setitem__">>} ->
                         trace_subscript_set_missing(Ref, Index),
@@ -2768,7 +2985,8 @@ set_subscript({py_ref, _} = Ref, Index, Value) ->
                 end,
             _ = call_value(Setter, [Index, Value]),
             ok;
-        Type -> erlang:error({type_error, {not_subscriptable, Type}})
+        Type ->
+            erlang:error({type_error, {not_subscriptable, Type}})
     end;
 set_subscript({py_instance_dict, Instance}, Key, Value) ->
     Data = pyrlang_heap:data(Instance),
@@ -2783,12 +3001,16 @@ trace_subscript_set_missing(Ref, Index) ->
             ok;
         _ ->
             ClassName =
-                try pyrlang_object:class_name(pyrlang_object:class(Ref))
-                catch _:_ -> <<"?">>
+                try
+                    pyrlang_object:class_name(pyrlang_object:class(Ref))
+                catch
+                    _:_ -> <<"?">>
                 end,
             Attrs =
-                try maps:keys(maps:get(attrs, pyrlang_heap:data(Ref), #{}))
-                catch _:_ -> []
+                try
+                    maps:keys(maps:get(attrs, pyrlang_heap:data(Ref), #{}))
+                catch
+                    _:_ -> []
                 end,
             io:format(
                 standard_error,
@@ -2798,7 +3020,8 @@ trace_subscript_set_missing(Ref, Index) ->
     end.
 
 set_slice_or_raise(Object, Start, Stop, Value) ->
-    try set_slice(Object, Start, Stop, Value)
+    try
+        set_slice(Object, Start, Stop, Value)
     catch
         error:{type_error, Reason} ->
             raise_builtin(<<"TypeError">>, Reason)
@@ -2816,7 +3039,9 @@ set_slice({py_ref, _} = Ref, Start0, Stop0, Value) ->
             {_Removed, Suffix} = lists:split(Count, Rest),
             pyrlang_heap:set_data(Ref, Prefix ++ pyrlang_iter:values(Value) ++ Suffix);
         instance ->
-            call_value(pyrlang_object:get_attr(Ref, <<"__setitem__">>), [{slice, Start0, Stop0}, Value]),
+            call_value(pyrlang_object:get_attr(Ref, <<"__setitem__">>), [
+                {slice, Start0, Stop0}, Value
+            ]),
             ok;
         Type ->
             erlang:error({type_error, {not_slice_assignable, Type}})
@@ -2898,11 +3123,14 @@ eval_binop(plus, {py_ref, _} = Left, {py_ref, _} = Right) ->
                     Value;
                 error ->
                     case {tuple_subclass_items(Left), tuple_subclass_items(Right)} of
-                        {{ok, LeftItems}, {ok, RightItems}} -> list_to_tuple(LeftItems ++ RightItems);
+                        {{ok, LeftItems}, {ok, RightItems}} ->
+                            list_to_tuple(LeftItems ++ RightItems);
                         _ ->
                             case {string_subclass_value(Left), string_subclass_value(Right)} of
-                                {{ok, LeftValue}, {ok, RightValue}} -> <<LeftValue/binary, RightValue/binary>>;
-                                _ -> eval_binop_special(plus, Left, Right)
+                                {{ok, LeftValue}, {ok, RightValue}} ->
+                                    <<LeftValue/binary, RightValue/binary>>;
+                                _ ->
+                                    eval_binop_special(plus, Left, Right)
                             end
                     end
             end
@@ -2939,7 +3167,11 @@ eval_binop(minus, {py_ref, _} = Left, Right) ->
     case pyrlang_heap:type(Left) of
         set ->
             RightKeys = keyed_values(iter_values(Right)),
-            pyrlang_heap:set([Item || Item <- pyrlang_heap:set_items(Left), not maps:is_key(pyrlang_heap:value_key(Item), RightKeys)]);
+            pyrlang_heap:set([
+                Item
+             || Item <- pyrlang_heap:set_items(Left),
+                not maps:is_key(pyrlang_heap:value_key(Item), RightKeys)
+            ]);
         _ ->
             eval_numeric_binop_or_special(minus, Left, Right)
     end;
@@ -2971,7 +3203,9 @@ eval_binop(pow, Left, Right) when is_integer(Left), is_integer(Right), Right >= 
     integer_pow(Left, Right);
 eval_binop(pow, Left, Right) when is_number(Left), is_number(Right) ->
     math:pow(Left, Right);
-eval_binop(pow, Left, Right) when (is_boolean(Left) orelse is_number(Left)), (is_boolean(Right) orelse is_number(Right)) ->
+eval_binop(pow, Left, Right) when
+    (is_boolean(Left) orelse is_number(Left)), (is_boolean(Right) orelse is_number(Right))
+->
     math:pow(numeric_value(Left), numeric_value(Right));
 eval_binop(slash, Left, Right) when is_integer(Left), is_integer(Right), Right =/= 0 ->
     Left / Right;
@@ -2995,7 +3229,11 @@ eval_binop(amp, {py_ref, _} = Left, Right) ->
     case pyrlang_heap:type(Left) of
         set ->
             RightKeys = keyed_values(iter_values(Right)),
-            pyrlang_heap:set([Item || Item <- pyrlang_heap:set_items(Left), maps:is_key(pyrlang_heap:value_key(Item), RightKeys)]);
+            pyrlang_heap:set([
+                Item
+             || Item <- pyrlang_heap:set_items(Left),
+                maps:is_key(pyrlang_heap:value_key(Item), RightKeys)
+            ]);
         _ ->
             eval_numeric_binop_or_special(amp, Left, Right)
     end;
@@ -3024,7 +3262,10 @@ eval_binop(Op, Left, Right) ->
 eval_aug_assign_value(plus, {py_ref, _} = Current, Right) ->
     case pyrlang_heap:type(Current) of
         list ->
-            lists:foreach(fun(Value) -> ok = pyrlang_heap:list_append(Current, Value) end, pyrlang_iter:values(Right)),
+            lists:foreach(
+                fun(Value) -> ok = pyrlang_heap:list_append(Current, Value) end,
+                pyrlang_iter:values(Right)
+            ),
             Current;
         _ ->
             eval_binop_or_raise(plus, Current, Right)
@@ -3109,13 +3350,15 @@ numeric_operand(_Value) ->
 
 repeat_ref_sequence(Ref, Count) ->
     case pyrlang_heap:type(Ref) of
-        list -> {ok, pyrlang_heap:list(repeat_list(pyrlang_heap:list_items(Ref), Count))};
+        list ->
+            {ok, pyrlang_heap:list(repeat_list(pyrlang_heap:list_items(Ref), Count))};
         instance ->
             case string_subclass_value(Ref) of
                 {ok, Value} -> {ok, binary:copy(Value, repeat_count(Count))};
                 error -> error
             end;
-        _Type -> error
+        _Type ->
+            error
     end.
 
 repeat_list(Items, Count0) ->
@@ -3145,7 +3388,8 @@ eval_binop_or_raise(floor_div, _Left, Right) when Right == 0 ->
 eval_binop_or_raise(percent, Left, Right) when not is_binary(Left), Right == 0 ->
     raise_builtin(<<"ZeroDivisionError">>, <<"integer modulo by zero">>);
 eval_binop_or_raise(Op, Left, Right) ->
-    try eval_binop(Op, Left, Right)
+    try
+        eval_binop(Op, Left, Right)
     catch
         error:{unsupported_binop, _Op, _Left, _Right} ->
             raise_builtin(<<"TypeError">>, {unsupported_binop, Op, Left, Right})
@@ -3310,7 +3554,10 @@ format_percent(Format, Args) ->
         true ->
             unicode:characters_to_binary(lists:reverse(format_percent_mapping(Chars, Args, [])));
         false ->
-            case (not format_has_conversion(Chars)) andalso format_arg_is_ignored_without_conversions(Args) of
+            case
+                (not format_has_conversion(Chars)) andalso
+                    format_arg_is_ignored_without_conversions(Args)
+            of
                 true ->
                     {Output, []} = format_percent(Chars, [], []),
                     unicode:characters_to_binary(lists:reverse(Output));
@@ -3318,14 +3565,18 @@ format_percent(Format, Args) ->
                     Values = format_args(Args),
                     {Output, RestValues} = format_percent(Chars, Values, []),
                     case RestValues of
-                        [] -> unicode:characters_to_binary(lists:reverse(Output));
+                        [] ->
+                            unicode:characters_to_binary(lists:reverse(Output));
                         _ ->
                             case format_arg_is_mapping(Args) of
                                 true ->
                                     unicode:characters_to_binary(lists:reverse(Output));
                                 false ->
                                     trace_percent_extra_args(Format, Args, RestValues),
-                                    raise_builtin(<<"TypeError">>, <<"not all arguments converted during string formatting">>)
+                                    raise_builtin(
+                                        <<"TypeError">>,
+                                        <<"not all arguments converted during string formatting">>
+                                    )
                             end
                     end
             end
@@ -3342,7 +3593,8 @@ format_args(Value) ->
     [Value].
 
 format_arg_is_mapping({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref) =:= dict
+    try
+        pyrlang_heap:type(Ref) =:= dict
     catch
         _:_ -> false
     end;
@@ -3417,7 +3669,9 @@ trace_percent_not_enough() ->
         false ->
             ok;
         _ ->
-            io:format(standard_error, "PYRLANG_PERCENT_NOT_ENOUGH stack=~p~n", [trace_function_stack()])
+            io:format(standard_error, "PYRLANG_PERCENT_NOT_ENOUGH stack=~p~n", [
+                trace_function_stack()
+            ])
     end.
 
 format_uses_mapping([]) ->
@@ -3487,8 +3741,12 @@ format_percent_value({Spec, ZeroPad, Width}, Value, Acc) when Spec =:= $s ->
     prepend_percent_text(py_string(Value), ZeroPad, Width, Acc);
 format_percent_value({Spec, ZeroPad, Width}, Value, Acc) when Spec =:= $r; Spec =:= $a ->
     prepend_percent_text(pyrlang_builtins:builtin_repr(Value), ZeroPad, Width, Acc);
-format_percent_value({Spec, ZeroPad, Width}, Value, Acc) when Spec =:= $d; Spec =:= $i; Spec =:= $u ->
-    prepend_percent_text(unicode:characters_to_binary(integer_to_list(numeric_value(Value))), ZeroPad, Width, Acc);
+format_percent_value({Spec, ZeroPad, Width}, Value, Acc) when
+    Spec =:= $d; Spec =:= $i; Spec =:= $u
+->
+    prepend_percent_text(
+        unicode:characters_to_binary(integer_to_list(numeric_value(Value))), ZeroPad, Width, Acc
+    );
 format_percent_value({Spec, ZeroPad, Width}, Value, Acc) when Spec =:= $x; Spec =:= $X ->
     Digits = integer_to_list(numeric_value(Value), 16),
     Text =
@@ -3619,7 +3877,8 @@ python_order(Left, Right) when is_tuple(Left), is_tuple(Right) ->
     sequence_order(tuple_to_list(Left), tuple_to_list(Right));
 python_order({py_ref, _} = Left, {py_ref, _} = Right) ->
     case {pyrlang_heap:type(Left), pyrlang_heap:type(Right)} of
-        {list, list} -> sequence_order(pyrlang_heap:list_items(Left), pyrlang_heap:list_items(Right));
+        {list, list} ->
+            sequence_order(pyrlang_heap:list_items(Left), pyrlang_heap:list_items(Right));
         _ ->
             case {string_subclass_value(Left), string_subclass_value(Right)} of
                 {{ok, LeftValue}, {ok, RightValue}} -> erlang_order(LeftValue, RightValue);
@@ -3653,7 +3912,8 @@ sequence_order([Left | LeftRest], [Right | RightRest]) ->
 
 erlang_order(Left, Right) ->
     case Left =:= Right of
-        true -> eq;
+        true ->
+            eq;
         false ->
             case Left < Right of
                 true -> lt;
@@ -3831,10 +4091,14 @@ normalize_index(Index, Length) when Index >= 0, Index < Length ->
 normalize_index(Index, _Length) ->
     erlang:error({index_error, Index}).
 
-truthy(false) -> false;
-truthy(none) -> false;
-truthy(0) -> false;
-truthy(<<>>) -> false;
+truthy(false) ->
+    false;
+truthy(none) ->
+    false;
+truthy(0) ->
+    false;
+truthy(<<>>) ->
+    false;
 truthy({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
         list -> pyrlang_heap:list_items(Ref) =/= [];
@@ -3845,7 +4109,8 @@ truthy({py_ref, _} = Ref) ->
     end;
 truthy(Tuple) when is_tuple(Tuple) ->
     tuple_size(Tuple) =/= 0;
-truthy(_) -> true.
+truthy(_) ->
+    true.
 
 instance_truthy(Ref) ->
     case call_truthy_special(Ref, <<"__bool__">>) of
@@ -3863,7 +4128,8 @@ instance_truthy(Ref) ->
                     true;
                 error ->
                     case tuple_subclass_items(Ref) of
-                        {ok, Items} -> Items =/= [];
+                        {ok, Items} ->
+                            Items =/= [];
                         error ->
                             case string_subclass_value(Ref) of
                                 {ok, Value} -> Value =/= <<>>;
@@ -3923,7 +4189,8 @@ is_string_subclass_instance({py_ref, _} = Ref) ->
     ).
 
 class_named({py_ref, _} = Class, Name) ->
-    try pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
+    try
+        pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
     catch
         _:_ -> false
     end;
@@ -3957,12 +4224,18 @@ eval_for(Target, Iterator, Body, Env0, Last) ->
                 {BodyLast, Env2} = eval_statements(Body, Env1, none),
                 eval_for(Target, Iterator, Body, Env2, BodyLast)
             catch
-                throw:{py_exception_with_env, Exception, ExceptionEnv} -> throw({py_exception_with_env, Exception, ExceptionEnv});
-                throw:{py_exception, Exception} -> throw({py_exception_with_env, Exception, Env1});
-                throw:{py_continue, ContinueEnv} -> eval_for(Target, Iterator, Body, ContinueEnv, Last);
-                throw:py_continue -> eval_for(Target, Iterator, Body, Env1, Last);
-                throw:{py_break, BreakEnv} -> {Last, BreakEnv, false};
-                throw:py_break -> {Last, Env1, false}
+                throw:{py_exception_with_env, Exception, ExceptionEnv} ->
+                    throw({py_exception_with_env, Exception, ExceptionEnv});
+                throw:{py_exception, Exception} ->
+                    throw({py_exception_with_env, Exception, Env1});
+                throw:{py_continue, ContinueEnv} ->
+                    eval_for(Target, Iterator, Body, ContinueEnv, Last);
+                throw:py_continue ->
+                    eval_for(Target, Iterator, Body, Env1, Last);
+                throw:{py_break, BreakEnv} ->
+                    {Last, BreakEnv, false};
+                throw:py_break ->
+                    {Last, Env1, false}
             end
     end.
 
@@ -3989,14 +4262,22 @@ bind_assignment_target({target_attr, {attr, ObjectExpr, Name}}, Value, Env0) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     ok = pyrlang_object:set_attr(Object, Name, Value),
     Env1;
-bind_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Value, Env0) ->
+bind_assignment_target(
+    {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Value, Env0
+) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Start, Env2} = eval_optional_slice(StartExpr, Env1),
     {Stop, Env3} = eval_optional_slice(StopExpr, Env2),
     ok = set_slice_or_raise(Object, Start, Stop, Value),
     Env3;
-bind_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}}, Value, Env0) ->
-    bind_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Value, Env0);
+bind_assignment_target(
+    {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}},
+    Value,
+    Env0
+) ->
+    bind_assignment_target(
+        {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Value, Env0
+    );
 bind_assignment_target({target_subscript, {subscript, ObjectExpr, IndexExpr}}, Value, Env0) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Index, Env2} = eval_expr(IndexExpr, Env1),
@@ -4011,7 +4292,8 @@ bind_assignment_target({target_list, Targets}, Value, Env) ->
 
 bind_name(Name, Value, Env) ->
     case lists:member(Name, maps:get(?GLOBAL_DECL_NAMES, Env, [])) of
-        true -> bind_global_name(Name, Value, Env);
+        true ->
+            bind_global_name(Name, Value, Env);
         false ->
             Env1 = Env#{Name => Value},
             sync_bound_module_name(Name, Value, Env1),
@@ -4071,7 +4353,8 @@ set_global_name_in_module(ModuleName, Name, Value) ->
                 _:_ -> ok
             end;
         _ ->
-            try pyrlang_module:set_attr(pyrlang_module:load(ModuleName), Name, Value)
+            try
+                pyrlang_module:set_attr(pyrlang_module:load(ModuleName), Name, Value)
             catch
                 _:_ -> ok
             end
@@ -4095,14 +4378,20 @@ delete_assignment_target({target_attr, {attr, ObjectExpr, Name}}, Env0) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     ok = pyrlang_object:del_attr(Object, Name),
     Env1;
-delete_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Env0) ->
+delete_assignment_target(
+    {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Env0
+) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Start, Env2} = eval_optional_slice(StartExpr, Env1),
     {Stop, Env3} = eval_optional_slice(StopExpr, Env2),
     ok = del_slice(Object, Start, Stop),
     Env3;
-delete_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}}, Env0) ->
-    delete_assignment_target({target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Env0);
+delete_assignment_target(
+    {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}}, Env0
+) ->
+    delete_assignment_target(
+        {target_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}}, Env0
+    );
 delete_assignment_target({target_subscript, {subscript, ObjectExpr, IndexExpr}}, Env0) ->
     {Object, Env1} = eval_expr(ObjectExpr, Env0),
     {Index, Env2} = eval_expr(IndexExpr, Env1),
@@ -4132,7 +4421,9 @@ bind_sequence_assignment_targets(Targets, Value, Env) ->
                     StarredCount = length(RestValues) - AfterCount,
                     {StarredValues, AfterValues} = lists:split(StarredCount, RestValues),
                     Env1 = bind_assignment_pairs(BeforeTargets, BeforeValues, Env),
-                    Env2 = bind_assignment_target(StarredTarget, pyrlang_heap:list(StarredValues), Env1),
+                    Env2 = bind_assignment_target(
+                        StarredTarget, pyrlang_heap:list(StarredValues), Env1
+                    ),
                     bind_assignment_pairs(AfterTargets, AfterValues, Env2);
                 false ->
                     raise_builtin(<<"ValueError">>, <<"not enough values to unpack">>)
@@ -4157,7 +4448,9 @@ split_starred_assignment_targets([], Before, {Starred, AfterRev}) ->
     {lists:reverse(Before), Starred, lists:reverse(AfterRev)};
 split_starred_assignment_targets([{target_starred, Target} | Rest], Before, none) ->
     split_starred_assignment_targets(Rest, Before, {Target, []});
-split_starred_assignment_targets([{target_starred, _Target} | _Rest], _Before, {_Starred, _AfterRev}) ->
+split_starred_assignment_targets(
+    [{target_starred, _Target} | _Rest], _Before, {_Starred, _AfterRev}
+) ->
     many;
 split_starred_assignment_targets([Target | Rest], Before, none) ->
     split_starred_assignment_targets(Rest, [Target | Before], none);
@@ -4217,13 +4510,15 @@ eval_comp_collect(Clauses, Env0, Emit) ->
     end.
 
 comp_clause_target_names(Clauses) ->
-    lists:usort(lists:flatmap(
-        fun
-            ({for, Target, _IterableExpr, _Conditions}) -> target_bound_names(Target);
-            (_Other) -> []
-        end,
-        Clauses
-    )).
+    lists:usort(
+        lists:flatmap(
+            fun
+                ({for, Target, _IterableExpr, _Conditions}) -> target_bound_names(Target);
+                (_Other) -> []
+            end,
+            Clauses
+        )
+    ).
 
 target_bound_names({target_name, Name}) ->
     [Name];
@@ -4253,7 +4548,9 @@ eval_comp_loop([], Env0, Emit, Acc) ->
     {[Value | Acc], Env1};
 eval_comp_loop([{for, Target, IterableExpr, Conditions} | RestClauses], Env0, Emit, Acc0) ->
     {Iterable, Env1} = eval_expr(IterableExpr, Env0),
-    eval_comp_iter(Target, iter_values(Iterable), lists:reverse(Conditions), RestClauses, Env1, Emit, Acc0).
+    eval_comp_iter(
+        Target, iter_values(Iterable), lists:reverse(Conditions), RestClauses, Env1, Emit, Acc0
+    ).
 
 eval_comp_iter(_Target, [], _Conditions, _RestClauses, Env, _Emit, Acc) ->
     {Acc, Env};
@@ -4282,7 +4579,8 @@ eval_list_comp(Expr, Target, [Value | Rest], Condition, Env0, Acc) ->
     Env1 = bind_assignment_target(Target, Value, Env0),
     {Include, Env2} =
         case Condition of
-            none -> {true, Env1};
+            none ->
+                {true, Env1};
             _ ->
                 {ConditionValue, ConditionEnv} = eval_expr(Condition, Env1),
                 {truthy(ConditionValue), ConditionEnv}
@@ -4304,7 +4602,9 @@ eval_dict_comp(KeyExpr, ValueExpr, Target, [Value | Rest], Condition, Env0, Acc)
         true ->
             {Key, Env3} = eval_expr(KeyExpr, Env2),
             {ItemValue, Env4} = eval_expr(ValueExpr, Env3),
-            eval_dict_comp(KeyExpr, ValueExpr, Target, Rest, Condition, Env4, [{Key, ItemValue} | Acc]);
+            eval_dict_comp(KeyExpr, ValueExpr, Target, Rest, Condition, Env4, [
+                {Key, ItemValue} | Acc
+            ]);
         false ->
             eval_dict_comp(KeyExpr, ValueExpr, Target, Rest, Condition, Env2, Acc)
     end.
@@ -4347,7 +4647,9 @@ eval_with(ManagerExpr, Binding, Body, Env0) ->
         {Value, Env2}
     catch
         throw:{py_exception, Exception} ->
-            Suppressed = call_value(Exit, [pyrlang_exception:exception_type(Exception), Exception, none]),
+            Suppressed = call_value(Exit, [
+                pyrlang_exception:exception_type(Exception), Exception, none
+            ]),
             case truthy(Suppressed) of
                 true -> {none, BodyEnv};
                 false -> pyrlang_exception:raise(Exception)
@@ -4394,7 +4696,9 @@ statement_contains_yield({for_stmt, _Name, _Iterable, Body, ElseBody}) ->
     contains_yield(Body) orelse contains_yield(ElseBody);
 statement_contains_yield({try_stmt, Body, Handlers, ElseBody, FinallyBody}) ->
     contains_yield(Body) orelse contains_yield(ElseBody) orelse contains_yield(FinallyBody) orelse
-        lists:any(fun({_Pattern, _Binding, HandlerBody}) -> contains_yield(HandlerBody) end, Handlers);
+        lists:any(
+            fun({_Pattern, _Binding, HandlerBody}) -> contains_yield(HandlerBody) end, Handlers
+        );
 statement_contains_yield({with_stmt, _Manager, _Binding, Body}) ->
     contains_yield(Body);
 statement_contains_yield({def, _Name, _Params, _Body}) ->
@@ -4439,7 +4743,9 @@ collect_yields([{for_stmt, Target, IterableExpr, Body} | Rest], Env0, Acc0) ->
 collect_yields([{for_stmt, Target, IterableExpr, Body, ElseBody} | Rest], Env0, Acc0) ->
     {Iterable, Env1} = eval_expr(IterableExpr, Env0),
     try
-        {LoopValues, Env2, Completed} = collect_yield_for(Target, pyrlang_iter:iter(Iterable), Body, Env1, []),
+        {LoopValues, Env2, Completed} = collect_yield_for(
+            Target, pyrlang_iter:iter(Iterable), Body, Env1, []
+        ),
         {ElseValues, Env3} = collect_loop_else_yields(Completed, ElseBody, Env2),
         collect_yields(Rest, Env3, lists:reverse(ElseValues) ++ lists:reverse(LoopValues) ++ Acc0)
     catch
@@ -4499,13 +4805,19 @@ collect_yield_for(Target, Iterator, Body, Env0, Acc0) ->
                 throw:{py_generator_return, Values, ReturnEnv} ->
                     throw({py_generator_return, prepend_collected_yields(Acc0, Values), ReturnEnv});
                 throw:{py_generator_continue, Values, ContinueEnv} ->
-                    collect_yield_for(Target, Iterator, Body, ContinueEnv, lists:reverse(Values) ++ Acc0);
+                    collect_yield_for(
+                        Target, Iterator, Body, ContinueEnv, lists:reverse(Values) ++ Acc0
+                    );
                 throw:{py_generator_break, Values, BreakEnv} ->
                     {lists:reverse(lists:reverse(Values) ++ Acc0), BreakEnv, false};
-                throw:{py_continue, ContinueEnv} -> collect_yield_for(Target, Iterator, Body, ContinueEnv, Acc0);
-                throw:py_continue -> collect_yield_for(Target, Iterator, Body, Env1, Acc0);
-                throw:{py_break, BreakEnv} -> {lists:reverse(Acc0), BreakEnv, false};
-                throw:py_break -> {lists:reverse(Acc0), Env1, false}
+                throw:{py_continue, ContinueEnv} ->
+                    collect_yield_for(Target, Iterator, Body, ContinueEnv, Acc0);
+                throw:py_continue ->
+                    collect_yield_for(Target, Iterator, Body, Env1, Acc0);
+                throw:{py_break, BreakEnv} ->
+                    {lists:reverse(Acc0), BreakEnv, false};
+                throw:py_break ->
+                    {lists:reverse(Acc0), Env1, false}
             end
     end.
 
@@ -4514,18 +4826,25 @@ collect_yield_while(Condition, Body, Env0, Acc0) ->
     case truthy(ConditionValue) of
         true ->
             try collect_yields(Body, Env1, []) of
-                {Values, Env2} -> collect_yield_while(Condition, Body, Env2, lists:reverse(Values) ++ Acc0)
+                {Values, Env2} ->
+                    collect_yield_while(Condition, Body, Env2, lists:reverse(Values) ++ Acc0)
             catch
                 throw:{py_generator_return, Values, ReturnEnv} ->
                     throw({py_generator_return, prepend_collected_yields(Acc0, Values), ReturnEnv});
                 throw:{py_generator_continue, Values, ContinueEnv} ->
-                    collect_yield_while(Condition, Body, ContinueEnv, lists:reverse(Values) ++ Acc0);
+                    collect_yield_while(
+                        Condition, Body, ContinueEnv, lists:reverse(Values) ++ Acc0
+                    );
                 throw:{py_generator_break, Values, BreakEnv} ->
                     {lists:reverse(lists:reverse(Values) ++ Acc0), BreakEnv, false};
-                throw:{py_continue, ContinueEnv} -> collect_yield_while(Condition, Body, ContinueEnv, Acc0);
-                throw:py_continue -> collect_yield_while(Condition, Body, Env1, Acc0);
-                throw:{py_break, BreakEnv} -> {lists:reverse(Acc0), BreakEnv, false};
-                throw:py_break -> {lists:reverse(Acc0), Env1, false}
+                throw:{py_continue, ContinueEnv} ->
+                    collect_yield_while(Condition, Body, ContinueEnv, Acc0);
+                throw:py_continue ->
+                    collect_yield_while(Condition, Body, Env1, Acc0);
+                throw:{py_break, BreakEnv} ->
+                    {lists:reverse(Acc0), BreakEnv, false};
+                throw:py_break ->
+                    {lists:reverse(Acc0), Env1, false}
             end;
         false ->
             {lists:reverse(Acc0), Env1, true}
@@ -4555,7 +4874,9 @@ collect_yield_with(ManagerExpr, Binding, Body, Env0) ->
             _ = call_value(Exit, [none, none, none]),
             throw({py_generator_return, ReturnValues, ReturnEnv});
         throw:{py_exception, Exception} ->
-            Suppressed = call_value(Exit, [pyrlang_exception:exception_type(Exception), Exception, none]),
+            Suppressed = call_value(Exit, [
+                pyrlang_exception:exception_type(Exception), Exception, none
+            ]),
             case truthy(Suppressed) of
                 true -> {[], BodyEnv};
                 false -> pyrlang_exception:raise(Exception)
@@ -4614,7 +4935,8 @@ collect_yield_handle_exception(Exception, [{Pattern, Binding, Body} | Rest], Env
                         {normal, Values, restore_current_exception(Env2, PreviousException)}
                 catch
                     throw:{py_generator_return, Values, ReturnEnv} ->
-                        {generator_return, Values, restore_current_exception(ReturnEnv, PreviousException)};
+                        {generator_return, Values,
+                            restore_current_exception(ReturnEnv, PreviousException)};
                     throw:{py_exception, NewException} ->
                         pyrlang_exception:raise(NewException)
                 end
@@ -4691,7 +5013,8 @@ resolve_import_name(ModuleName, _Env) ->
     ModuleName.
 
 get_from_import_attr(ModuleName, Module, Name) ->
-    try pyrlang_module:get_attr(Module, Name)
+    try
+        pyrlang_module:get_attr(Module, Name)
     catch
         throw:{py_exception, Exception} ->
             case pyrlang_exception:exception_type(Exception) of
@@ -4712,7 +5035,9 @@ star_import_bindings(Module) ->
         {ok, Names} ->
             maps:from_list([{Name, pyrlang_module:get_attr(Module, Name)} || Name <- Names]);
         error ->
-            maps:filter(fun(Name, _Value) -> not is_private_name(Name) end, pyrlang_module:env(Module))
+            maps:filter(
+                fun(Name, _Value) -> not is_private_name(Name) end, pyrlang_module:env(Module)
+            )
     end.
 
 module_all_names(Module) ->
@@ -4779,9 +5104,12 @@ eval_try_body([Statement | Rest], Env0, Last) ->
     try eval_statements([Statement], Env0, Last) of
         {Value, Env1} -> eval_try_body(Rest, Env1, Value)
     catch
-        throw:{py_exception_with_env, Exception, ExceptionEnv} -> throw({py_exception_with_env, Exception, ExceptionEnv});
-        throw:{py_exception, Exception} -> throw({py_exception_with_env, Exception, Env0});
-        throw:{py_return, ReturnValue} -> throw({py_return_with_env, ReturnValue, Env0})
+        throw:{py_exception_with_env, Exception, ExceptionEnv} ->
+            throw({py_exception_with_env, Exception, ExceptionEnv});
+        throw:{py_exception, Exception} ->
+            throw({py_exception_with_env, Exception, Env0});
+        throw:{py_return, ReturnValue} ->
+            throw({py_return_with_env, ReturnValue, Env0})
     end.
 
 handle_exception(Exception, [], _Env) ->
@@ -4801,8 +5129,10 @@ handle_exception(Exception, [{Pattern, Binding, Body} | Rest], Env0) ->
                     {Value, Env2} = eval_statements(Body, Env1, none),
                     {normal, Value, restore_current_exception(Env2, PreviousException)}
                 catch
-                    throw:{py_return, ReturnValue} -> {return, ReturnValue, restore_current_exception(Env1, PreviousException)};
-                    throw:{py_exception, NewException} -> pyrlang_exception:raise(NewException)
+                    throw:{py_return, ReturnValue} ->
+                        {return, ReturnValue, restore_current_exception(Env1, PreviousException)};
+                    throw:{py_exception, NewException} ->
+                        pyrlang_exception:raise(NewException)
                 end
             end);
         false ->
@@ -4817,7 +5147,8 @@ restore_current_exception(Env, error) ->
 with_process_exception(Exception, Fun) ->
     Previous = erlang:get(?CURRENT_EXCEPTION_KEY),
     erlang:put(?CURRENT_EXCEPTION_KEY, Exception),
-    try Fun()
+    try
+        Fun()
     after
         restore_process_value(?CURRENT_EXCEPTION_KEY, Previous)
     end.
@@ -4876,7 +5207,9 @@ call_value({py_weakref, _Target}, {call_args, Args, KwArgs}) ->
     erlang:error({arity_error, {weakref_call, length(Args), maps:size(KwArgs)}});
 call_value({py_weakref, _Target}, Args) ->
     erlang:error({arity_error, {weakref_call, length(Args)}});
-call_value({py_native_varargs, Fun}, {call_args, Args, KwArgs}) when is_function(Fun, 1), map_size(KwArgs) =:= 0 ->
+call_value({py_native_varargs, Fun}, {call_args, Args, KwArgs}) when
+    is_function(Fun, 1), map_size(KwArgs) =:= 0
+->
     Fun(Args);
 call_value({py_native_varargs, _Fun}, {call_args, _Args, KwArgs}) when map_size(KwArgs) =/= 0 ->
     erlang:error({type_error, {unexpected_keyword_argument, maps:keys(KwArgs)}});
@@ -4884,7 +5217,9 @@ call_value({py_native_varargs, Fun}, Args) when is_function(Fun, 1), is_list(Arg
     Fun(Args);
 call_value({py_native_varargs, Fun, _Bind}, Args) when is_function(Fun, 1) ->
     call_value({py_native_varargs, Fun}, Args);
-call_value({py_native_callable, Fun}, {call_args, Args, KwArgs}) when is_function(Fun, 1), map_size(KwArgs) =:= 0 ->
+call_value({py_native_callable, Fun}, {call_args, Args, KwArgs}) when
+    is_function(Fun, 1), map_size(KwArgs) =:= 0
+->
     Fun(Args);
 call_value({py_native_callable, _Fun}, {call_args, _Args, KwArgs}) when map_size(KwArgs) =/= 0 ->
     erlang:error({type_error, {unexpected_keyword_argument, maps:keys(KwArgs)}});
@@ -4900,7 +5235,8 @@ call_value({py_native_call, Fun, _Bind}, Args) when is_function(Fun, 2) ->
     call_value({py_native_call, Fun}, Args);
 call_value(Callee, Args) ->
     case is_class_ref(Callee) of
-        true -> instantiate_class(Callee, Args);
+        true ->
+            instantiate_class(Callee, Args);
         false ->
             case callable_object(Callee) of
                 {ok, Call} -> call_value(Call, Args);
@@ -4916,7 +5252,8 @@ with_function_call_context(Function, Fun) ->
             _ -> []
         end,
     erlang:put(?FUNCTION_CALL_STACK_KEY, [Function | Stack]),
-    try Fun()
+    try
+        Fun()
     after
         restore_process_value(?FUNCTION_CALL_STACK_KEY, Previous)
     end.
@@ -4937,7 +5274,14 @@ execute_function(Function, Params, Body, ClosureEnv, IsGenerator, OwnerClass, Ar
     GlobalEnv = function_global_env(ClosureEnv),
     erlang:put(?FUNCTION_GLOBAL_ENV_KEY, GlobalEnv),
     try
-        execute_function_body(Params, Body, function_execution_env(ClosureEnv, GlobalEnv, Function), IsGenerator, OwnerClass, Args)
+        execute_function_body(
+            Params,
+            Body,
+            function_execution_env(ClosureEnv, GlobalEnv, Function),
+            IsGenerator,
+            OwnerClass,
+            Args
+        )
     after
         restore_module_eval(Previous),
         restore_process_value(?FUNCTION_GLOBAL_ENV_KEY, PreviousGlobalEnv)
@@ -4966,7 +5310,8 @@ function_global_module_env(ModuleName, ClosureEnv) ->
                 Data = pyrlang_heap:data(ModuleRef),
                 CurrentEnv = maps:get(env, Data, #{}),
                 case same_loading_module_env(Data, CurrentEnv, ClosureEnv) of
-                    true -> maps:merge(ClosureEnv, CurrentEnv);
+                    true ->
+                        maps:merge(ClosureEnv, CurrentEnv);
                     false ->
                         case maps:get(<<"__name__">>, CurrentEnv, undefined) of
                             ModuleName -> CurrentEnv;
@@ -5061,7 +5406,8 @@ execute_function_body(Params, Body, ClosureEnv, IsGenerator, OwnerClass, Args) -
                             try eval_statements(Body, LocalEnv, none) of
                                 {_Value, _Env} -> none
                             catch
-                                throw:{py_return, Value} -> Value;
+                                throw:{py_return, Value} ->
+                                    Value;
                                 throw:{py_exception_with_env, Exception, _ExceptionEnv} ->
                                     pyrlang_exception:raise(Exception)
                             end
@@ -5139,7 +5485,9 @@ contextmanager_start_function(Function, Params, Body, ClosureEnv, OwnerClass, Ar
         end
     end).
 
-contextmanager_resume(#{statements := Statements, env := Env, last := Last, stack := Stack}, normal) ->
+contextmanager_resume(
+    #{statements := Statements, env := Env, last := Last, stack := Stack}, normal
+) ->
     contextmanager_run(Statements, Env, Last, Stack);
 contextmanager_resume(#{env := Env, stack := Stack}, {throw, Exception}) ->
     case contextmanager_throw(Exception, Env, Stack) of
@@ -5153,10 +5501,14 @@ contextmanager_run([], Env, Last, Stack) ->
 contextmanager_run([{yield, Expr} | Rest], Env0, _Last, Stack) ->
     {Value, Env1} = eval_expr(Expr, Env0),
     {yielded, Value, #{statements => Rest, env => Env1, last => Value, stack => Stack}};
-contextmanager_run([{try_stmt, Body, Handlers, ElseBody, FinallyBody} = Statement | Rest], Env0, Last, Stack) ->
+contextmanager_run(
+    [{try_stmt, Body, Handlers, ElseBody, FinallyBody} = Statement | Rest], Env0, Last, Stack
+) ->
     case statement_contains_yield(Statement) of
         true ->
-            contextmanager_run(Body, Env0, none, [{try_context, Handlers, ElseBody, FinallyBody, Rest} | Stack]);
+            contextmanager_run(Body, Env0, none, [
+                {try_context, Handlers, ElseBody, FinallyBody, Rest} | Stack
+            ]);
         false ->
             {Value, Env1} = eval_statements([Statement], Env0, Last),
             contextmanager_run(Rest, Env1, Value, Stack)
@@ -5222,7 +5574,9 @@ contextmanager_throw(Exception, Env, [{try_context, Handlers, _ElseBody, Finally
 contextmanager_throw_try(Exception, [], Env, FinallyBody, _Rest, Stack) ->
     {_, FinallyEnv} = eval_statements(FinallyBody, Env, none),
     contextmanager_throw(Exception, FinallyEnv, Stack);
-contextmanager_throw_try(Exception, [{Pattern, Binding, Body} | Handlers], Env, FinallyBody, Rest, Stack) ->
+contextmanager_throw_try(
+    Exception, [{Pattern, Binding, Body} | Handlers], Env, FinallyBody, Rest, Stack
+) ->
     case exception_pattern_matches(Pattern, Exception, Env) of
         true ->
             PreviousException = maps:find(?CURRENT_EXCEPTION_KEY, Env),
@@ -5236,10 +5590,13 @@ contextmanager_throw_try(Exception, [{Pattern, Binding, Body} | Handlers], Env, 
                 try eval_statements(Body, Env1, none) of
                     {Value, Env2} ->
                         RestoredEnv = restore_current_exception(Env2, PreviousException),
-                        {handled, contextmanager_run(FinallyBody ++ Rest, RestoredEnv, Value, Stack)}
+                        {handled,
+                            contextmanager_run(FinallyBody ++ Rest, RestoredEnv, Value, Stack)}
                 catch
                     throw:{py_exception, RaisedException} ->
-                        {_, FinallyEnv} = eval_statements(FinallyBody, restore_current_exception(Env1, PreviousException), none),
+                        {_, FinallyEnv} = eval_statements(
+                            FinallyBody, restore_current_exception(Env1, PreviousException), none
+                        ),
                         case RaisedException =:= Exception of
                             true -> contextmanager_throw(Exception, FinallyEnv, Stack);
                             false -> pyrlang_exception:raise(RaisedException)
@@ -5263,7 +5620,8 @@ with_function_env(Env, Fun) ->
             _ -> []
         end,
     erlang:put(?FUNCTION_ENV_STACK_KEY, [Env | Stack]),
-    try Fun()
+    try
+        Fun()
     after
         restore_process_value(?FUNCTION_ENV_STACK_KEY, Previous)
     end.
@@ -5321,13 +5679,16 @@ prepare_param_with_env(Name, Env) when is_binary(Name) ->
 prepare_annotation_with_env(undefined, Env) ->
     {undefined, Env};
 prepare_annotation_with_env(AnnotationExpr, Env0) ->
-    try eval_expr(AnnotationExpr, Env0)
+    try
+        eval_expr(AnnotationExpr, Env0)
     catch
         _:_ -> {undefined, Env0}
     end.
 
 make_function(Name, Params, Body, ClosureEnv, DefaultsEnv, Mode) ->
-    {Function, _DefaultsEnv1} = make_function_with_env(Name, Params, Body, ClosureEnv, DefaultsEnv, Mode),
+    {Function, _DefaultsEnv1} = make_function_with_env(
+        Name, Params, Body, ClosureEnv, DefaultsEnv, Mode
+    ),
     Function.
 
 make_function_with_env(Name, Params, Body, Env, Mode) ->
@@ -5340,11 +5701,15 @@ make_function_with_env(Name, Params, Body, ClosureEnv, DefaultsEnv, Mode) ->
             ClosureEnv -> DefaultsEnv1;
             _ -> ClosureEnv
         end,
-    Closure = function_closure_env((capture_closure_env(CapturedEnv))#{?FUNCTION_LEXICAL_NAME_KEY => Name}),
+    Closure = function_closure_env((capture_closure_env(CapturedEnv))#{
+        ?FUNCTION_LEXICAL_NAME_KEY => Name
+    }),
     Function = {py_function, PreparedParams, Body, Closure, Mode},
     ok = pyrlang_object:set_attr(Function, <<"__name__">>, Name),
     ok = pyrlang_object:set_attr(Function, <<"__qualname__">>, Name),
-    ok = pyrlang_object:set_attr(Function, <<"__annotations__">>, function_annotations(PreparedParams)),
+    ok = pyrlang_object:set_attr(
+        Function, <<"__annotations__">>, function_annotations(PreparedParams)
+    ),
     {Function, DefaultsEnv1}.
 
 function_annotations(Params) ->
@@ -5373,7 +5738,13 @@ bind_arguments(Params, PosArgs, KwArgs, ClosureEnv) ->
                 {ok, Bound0, RemainingSpecs, ExtraPosArgs, KwArgs1} ->
                     case bind_remaining(RemainingSpecs, KwArgs1, Bound0) of
                         {ok, Bound1, RemainingKw} ->
-                            bind_extras(ExtraPosArgs, RemainingKw, VarArgName, KwRestName, maps:merge(ClosureEnv, Bound1));
+                            bind_extras(
+                                ExtraPosArgs,
+                                RemainingKw,
+                                VarArgName,
+                                KwRestName,
+                                maps:merge(ClosureEnv, Bound1)
+                            );
                         {error, Reason} ->
                             {error, Reason}
                     end;
@@ -5389,7 +5760,9 @@ parameter_specs(Params) ->
 
 parameter_specs([], _Section, Specs, VarArgName, KwRestName) ->
     {ok, lists:reverse(Specs), VarArgName, KwRestName};
-parameter_specs([{param, Name, Default, _Annotation} | Rest], Section, Specs, VarArgName, KwRestName) ->
+parameter_specs(
+    [{param, Name, Default, _Annotation} | Rest], Section, Specs, VarArgName, KwRestName
+) ->
     parameter_specs(Rest, Section, [{Section, Name, Default} | Specs], VarArgName, KwRestName);
 parameter_specs([{param, Name, Default} | Rest], Section, Specs, VarArgName, KwRestName) ->
     parameter_specs(Rest, Section, [{Section, Name, Default} | Specs], VarArgName, KwRestName);
@@ -5397,7 +5770,9 @@ parameter_specs([posonly_marker | Rest], poskw, Specs, VarArgName, KwRestName) -
     parameter_specs(Rest, poskw, mark_positional_only(Specs), VarArgName, KwRestName);
 parameter_specs([posonly_marker | _Rest], Section, _Specs, _VarArgName, _KwRestName) ->
     {error, {type_error, {invalid_positional_only_marker, Section}}};
-parameter_specs([kwonly_marker | Rest], Section, Specs, undefined, KwRestName) when Section =/= kwonly ->
+parameter_specs([kwonly_marker | Rest], Section, Specs, undefined, KwRestName) when
+    Section =/= kwonly
+->
     parameter_specs(Rest, kwonly, Specs, undefined, KwRestName);
 parameter_specs([kwonly_marker | _Rest], _Section, _Specs, VarArgName, _KwRestName) ->
     {error, {type_error, {invalid_keyword_only_marker, VarArgName}}};
@@ -5413,7 +5788,9 @@ parameter_specs([{kwarg_rest, Name, _Annotation} | Rest], Section, Specs, VarArg
     parameter_specs(Rest, Section, Specs, VarArgName, Name);
 parameter_specs([{kwarg_rest, Name} | Rest], Section, Specs, VarArgName, undefined) ->
     parameter_specs(Rest, Section, Specs, VarArgName, Name);
-parameter_specs([{kwarg_rest, Name, _Annotation} | _Rest], _Section, _Specs, _VarArgName, _KwRestName) ->
+parameter_specs(
+    [{kwarg_rest, Name, _Annotation} | _Rest], _Section, _Specs, _VarArgName, _KwRestName
+) ->
     {error, {type_error, {duplicate_kwarg_rest, Name}}};
 parameter_specs([{kwarg_rest, Name} | _Rest], _Section, _Specs, _VarArgName, _KwRestName) ->
     {error, {type_error, {duplicate_kwarg_rest, Name}}}.
@@ -5447,7 +5824,9 @@ bind_remaining([{posonly, Name, Default} | Rest], KwArgs0, Env0) ->
         {default, Value} -> bind_remaining(Rest, KwArgs0, Env0#{Name => Value});
         undefined -> {error, {arity_error, {missing_required_argument, Name}}}
     end;
-bind_remaining([{Kind, Name, Default} | Rest], KwArgs0, Env0) when Kind =:= poskw; Kind =:= kwonly ->
+bind_remaining([{Kind, Name, Default} | Rest], KwArgs0, Env0) when
+    Kind =:= poskw; Kind =:= kwonly
+->
     case maps:take(Name, KwArgs0) of
         {Value, KwArgs1} ->
             bind_remaining(Rest, KwArgs1, Env0#{Name => Value});
@@ -5487,7 +5866,8 @@ with_method_context(OwnerClass, [Self | _], Fun) ->
     PreviousSelf = erlang:get(pyrlang_current_self),
     erlang:put(pyrlang_current_class, OwnerClass),
     erlang:put(pyrlang_current_self, Self),
-    try Fun()
+    try
+        Fun()
     after
         restore_process_value(pyrlang_current_class, PreviousClass),
         restore_process_value(pyrlang_current_self, PreviousSelf)
@@ -5588,7 +5968,9 @@ eval_class_body([{def, Name, Params, Body} | Rest], Env, Attrs) ->
     Function = make_function(Name, Params, Body, Env, maps:merge(Env, Attrs), contains_yield(Body)),
     eval_class_body(Rest, Env, put_class_attr(Name, Function, Attrs));
 eval_class_body([{def, Name, Params, Body, Decorators} | Rest], Env0, Attrs) ->
-    Function = make_function(Name, Params, Body, Env0, maps:merge(Env0, Attrs), contains_yield(Body)),
+    Function = make_function(
+        Name, Params, Body, Env0, maps:merge(Env0, Attrs), contains_yield(Body)
+    ),
     {Decorated, Env1} = apply_decorators(Decorators, Function, maps:merge(Env0, Attrs)),
     eval_class_body(Rest, Env1, put_class_attr(Name, Decorated, Attrs));
 eval_class_body([{async_def, Name, Params, Body} | Rest], Env, Attrs) ->
@@ -5605,11 +5987,19 @@ eval_class_body([{class, Name, BaseExprs, MetaclassExpr, Body, Decorators} | Res
     {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, [], Body, maps:merge(Env0, Attrs)),
     {Decorated, Env2} = apply_decorators(Decorators, Class, maps:merge(Env1, Attrs)),
     eval_class_body(Rest, Env2, put_class_attr(Name, Decorated, Attrs));
-eval_class_body([{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, []} | Rest], Env0, Attrs) ->
-    {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, maps:merge(Env0, Attrs)),
+eval_class_body(
+    [{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, []} | Rest], Env0, Attrs
+) ->
+    {Class, Env1} = create_class(
+        Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, maps:merge(Env0, Attrs)
+    ),
     eval_class_body(Rest, Env1, put_class_attr(Name, Class, Attrs));
-eval_class_body([{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Decorators} | Rest], Env0, Attrs) ->
-    {Class, Env1} = create_class(Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, maps:merge(Env0, Attrs)),
+eval_class_body(
+    [{class, Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, Decorators} | Rest], Env0, Attrs
+) ->
+    {Class, Env1} = create_class(
+        Name, BaseExprs, MetaclassExpr, ClassKwExprs, Body, maps:merge(Env0, Attrs)
+    ),
     {Decorated, Env2} = apply_decorators(Decorators, Class, maps:merge(Env1, Attrs)),
     eval_class_body(Rest, Env2, put_class_attr(Name, Decorated, Attrs));
 eval_class_body([{if_stmt, Condition, ThenBody, ElseBody} | Rest], Env0, Attrs0) ->
@@ -5666,7 +6056,9 @@ eval_class_body([{assign_target, Target, Expr} | Rest], Env0, Attrs0) ->
 eval_class_body([{assign_chain, Targets, Expr} | Rest], Env0, Attrs0) ->
     {Value, Env1} = eval_expr(Expr, maps:merge(Env0, Attrs0)),
     {Env2, Attrs1} = lists:foldl(
-        fun(Target, {AccEnv, AccAttrs}) -> bind_class_assignment_target(Target, Value, AccEnv, AccAttrs) end,
+        fun(Target, {AccEnv, AccAttrs}) ->
+            bind_class_assignment_target(Target, Value, AccEnv, AccAttrs)
+        end,
         {Env1, Attrs0},
         Targets
     ),
@@ -5676,15 +6068,30 @@ eval_class_body([{assign_attr, {attr, ObjectExpr, Name}, Expr} | Rest], Env0, At
     {Value, Env2} = eval_expr(Expr, Env1),
     ok = pyrlang_object:set_attr(Object, Name, Value),
     eval_class_body(Rest, Env2, Attrs);
-eval_class_body([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest], Env0, Attrs) ->
+eval_class_body(
+    [{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest],
+    Env0,
+    Attrs
+) ->
     {Object, Env1} = eval_expr(ObjectExpr, maps:merge(Env0, Attrs)),
     {Start, Env2} = eval_optional_slice(StartExpr, Env1),
     {Stop, Env3} = eval_optional_slice(StopExpr, Env2),
     {Value, Env4} = eval_expr(Expr, Env3),
     ok = set_slice_or_raise(Object, Start, Stop, Value),
     eval_class_body(Rest, Env4, Attrs);
-eval_class_body([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}, Expr} | Rest], Env0, Attrs) ->
-    eval_class_body([{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest], Env0, Attrs);
+eval_class_body(
+    [
+        {assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr, undefined}}, Expr}
+        | Rest
+    ],
+    Env0,
+    Attrs
+) ->
+    eval_class_body(
+        [{assign_subscript, {subscript, ObjectExpr, {slice, StartExpr, StopExpr}}, Expr} | Rest],
+        Env0,
+        Attrs
+    );
 eval_class_body([{assign_subscript, {subscript, ObjectExpr, IndexExpr}, Expr} | Rest], Env0, Attrs) ->
     {Object, Env1} = eval_expr(ObjectExpr, maps:merge(Env0, Attrs)),
     {Index, Env2} = eval_expr(IndexExpr, Env1),
@@ -5757,7 +6164,9 @@ delete_class_assignment_target({target_name, Name}, Env, Attrs) ->
     {Env, remove_class_attr(Name, Attrs)};
 delete_class_assignment_target({target_tuple, Targets}, Env, Attrs) ->
     lists:foldl(
-        fun(Target, {AccEnv, AccAttrs}) -> delete_class_assignment_target(Target, AccEnv, AccAttrs) end,
+        fun(Target, {AccEnv, AccAttrs}) ->
+            delete_class_assignment_target(Target, AccEnv, AccAttrs)
+        end,
         {Env, Attrs},
         Targets
     );
@@ -5811,7 +6220,9 @@ eval_class_with(ManagerExpr, Binding, Body, Env0, Attrs0) ->
         Attrs1
     catch
         throw:{py_exception, Exception} ->
-            Suppressed = call_value(Exit, [pyrlang_exception:exception_type(Exception), Exception, none]),
+            Suppressed = call_value(Exit, [
+                pyrlang_exception:exception_type(Exception), Exception, none
+            ]),
             case truthy(Suppressed) of
                 true -> BodyAttrs;
                 false -> pyrlang_exception:raise(Exception)
@@ -5839,8 +6250,10 @@ eval_class_try(Body, Handlers, ElseBody, FinallyBody, Env, Attrs0) ->
                 catch
                     throw:{py_exception, NewException} -> {exception, NewException, Attrs0}
                 end;
-            throw:py_break -> {break, Attrs0};
-            throw:py_continue -> {continue, Attrs0}
+            throw:py_break ->
+                {break, Attrs0};
+            throw:py_continue ->
+                {continue, Attrs0}
         end,
     run_class_finally(Result, FinallyBody, Env).
 
@@ -5887,7 +6300,8 @@ copy_new_or_changed_bindings(Env, OuterEnv, Attrs0) ->
     ).
 
 is_class_ref({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref) =:= class
+    try
+        pyrlang_heap:type(Ref) =:= class
     catch
         _:_ -> false
     end;
@@ -5909,7 +6323,9 @@ instantiate_non_enum_class(Class, Args) ->
         error ->
             case own_class_attr(Class, <<"__new__">>) of
                 {ok, _New} ->
-                    instantiate_python_class(Class, Args, {ok, pyrlang_object:get_attr(Class, <<"__new__">>)});
+                    instantiate_python_class(
+                        Class, Args, {ok, pyrlang_object:get_attr(Class, <<"__new__">>)}
+                    );
                 error ->
                     instantiate_without_own_constructor(Class, Args)
             end
@@ -5927,8 +6343,12 @@ instantiate_without_own_constructor(Class, Args) ->
                     case pyrlang_object:class_attr(Class, <<"__pyrlang_builtin_constructor__">>) of
                         {ok, Constructor} ->
                             case is_type_subclass(Class) of
-                                true -> instantiate_python_class(Class, Args, inherited_new_lookup(Class));
-                                false -> call_value(Constructor, Args)
+                                true ->
+                                    instantiate_python_class(
+                                        Class, Args, inherited_new_lookup(Class)
+                                    );
+                                false ->
+                                    call_value(Constructor, Args)
                             end;
                         error ->
                             instantiate_python_class(Class, Args, inherited_new_lookup(Class))
@@ -5938,7 +6358,8 @@ instantiate_without_own_constructor(Class, Args) ->
 
 tuple_subclass_class(Class) ->
     TupleClass = maps:get(<<"tuple">>, pyrlang_builtins:env()),
-    is_class_ref(Class) andalso Class =/= TupleClass andalso lists:member(TupleClass, pyrlang_object:mro(Class)).
+    is_class_ref(Class) andalso Class =/= TupleClass andalso
+        lists:member(TupleClass, pyrlang_object:mro(Class)).
 
 maybe_enum_member_lookup(Class, Args) ->
     case enum_members(Class) of
@@ -5987,8 +6408,10 @@ find_enum_member([Member | Rest], Value) ->
 
 enum_member_matches(Member, Value) ->
     Member =:= Value orelse
-        try pyrlang_object:get_attr(Member, <<"_value_">>) =:= Value
-        catch _:_ -> false
+        try
+            pyrlang_object:get_attr(Member, <<"_value_">>) =:= Value
+        catch
+            _:_ -> false
         end.
 
 own_class_attr(Class, Name) ->
@@ -6046,12 +6469,16 @@ instantiate_python_class(Class, Args, NewLookup) ->
                                     Instance;
                                 false ->
                                     erlang:error(
-                                        {arity_error, {no_init, pyrlang_object:class_name(Class), length(PosArgs), maps:size(KwArgs)}}
+                                        {arity_error,
+                                            {no_init, pyrlang_object:class_name(Class),
+                                                length(PosArgs), maps:size(KwArgs)}}
                                     )
                             end;
                         _ ->
                             erlang:error(
-                                {arity_error, {no_init, pyrlang_object:class_name(Class), length(PosArgs), maps:size(KwArgs)}}
+                                {arity_error,
+                                    {no_init, pyrlang_object:class_name(Class), length(PosArgs),
+                                        maps:size(KwArgs)}}
                             )
                     end
             end;

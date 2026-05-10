@@ -2,7 +2,8 @@
 
 -export([parse_request/1, format_response/1]).
 
--spec parse_request(binary()) -> {ok, binary(), binary(), [{binary(), binary()}], binary()} | {error, term()}.
+-spec parse_request(binary()) ->
+    {ok, binary(), binary(), [{binary(), binary()}], binary()} | {error, term()}.
 parse_request(Request) when is_binary(Request) ->
     case binary:split(Request, <<"\r\n\r\n">>) of
         [Head, Body] ->
@@ -16,7 +17,7 @@ format_response({Status, Headers, BodyChunks}) ->
     Body = iolist_to_binary(BodyChunks),
     HeaderLines = [
         <<Name/binary, ": ", Value/binary, "\r\n">>
-        || {Name, Value} <- ensure_content_length(Headers, byte_size(Body))
+     || {Name, Value} <- ensure_content_length(Headers, byte_size(Body))
     ],
     iolist_to_binary([<<"HTTP/1.1 ">>, Status, <<"\r\n">>, HeaderLines, <<"\r\n">>, Body]).
 
@@ -66,8 +67,8 @@ parse_header(Line) ->
 validate_content_length(Headers) ->
     Parsed = [
         parse_content_length(Value)
-        || {Name, Value} <- Headers,
-           string:lowercase(Name) =:= <<"content-length">>
+     || {Name, Value} <- Headers,
+        string:lowercase(Name) =:= <<"content-length">>
     ],
     case lists:member(error, Parsed) of
         true -> {error, bad_content_length};
@@ -85,8 +86,8 @@ parse_content_length(Value) ->
 ensure_content_length(Headers, Length) ->
     [
         {Name, Value}
-        || {Name, Value} <- Headers,
-           string:lowercase(Name) =/= <<"content-length">>
+     || {Name, Value} <- Headers,
+        string:lowercase(Name) =/= <<"content-length">>
     ] ++ [{<<"content-length">>, integer_to_binary(Length)}].
 
 trim_binary(Binary) ->

@@ -33,8 +33,12 @@ export_value({?PY_REF, Id} = Ref, State0) when is_integer(Id) ->
                 next = WireId + 1,
                 refs = maps:put(Ref, WireId, State0#export_state.refs)
             },
-            {WireData, State2} = export_object_data(maps:get(type, Cell), maps:get(data, Cell), State1),
-            Objects = maps:put(WireId, {maps:get(type, Cell), WireData}, State2#export_state.objects),
+            {WireData, State2} = export_object_data(
+                maps:get(type, Cell), maps:get(data, Cell), State1
+            ),
+            Objects = maps:put(
+                WireId, {maps:get(type, Cell), WireData}, State2#export_state.objects
+            ),
             {{obj, WireId}, State2#export_state{objects = Objects}}
     end;
 export_value(Value, State) when is_integer(Value) ->
@@ -133,7 +137,7 @@ import_value({list, Items}, Objects, RefMap) ->
 import_value({map, Pairs}, Objects, RefMap) ->
     maps:from_list([
         {import_value(Key, Objects, RefMap), import_value(Value, Objects, RefMap)}
-        || {Key, Value} <- Pairs
+     || {Key, Value} <- Pairs
     ]).
 
 %% Fill placeholders lazily on first import reference use. This handles cycles:
@@ -157,18 +161,27 @@ import_object_data(list, {list, Items}, Objects, RefMap) ->
     [import_value_with_objects(Item, Objects, RefMap) || Item <- Items];
 import_object_data(dict, {map, Pairs}, Objects, RefMap) ->
     maps:from_list([
-        {import_value_with_objects(Key, Objects, RefMap), import_value_with_objects(Value, Objects, RefMap)}
-        || {Key, Value} <- Pairs
+        {
+            import_value_with_objects(Key, Objects, RefMap),
+            import_value_with_objects(Value, Objects, RefMap)
+        }
+     || {Key, Value} <- Pairs
     ]);
 import_object_data(set, {map, Pairs}, Objects, RefMap) ->
     maps:from_list([
-        {import_value_with_objects(Key, Objects, RefMap), import_value_with_objects(Value, Objects, RefMap)}
-        || {Key, Value} <- Pairs
+        {
+            import_value_with_objects(Key, Objects, RefMap),
+            import_value_with_objects(Value, Objects, RefMap)
+        }
+     || {Key, Value} <- Pairs
     ]);
 import_object_data(object, {map, Pairs}, Objects, RefMap) ->
     maps:from_list([
-        {import_value_with_objects(Key, Objects, RefMap), import_value_with_objects(Value, Objects, RefMap)}
-        || {Key, Value} <- Pairs
+        {
+            import_value_with_objects(Key, Objects, RefMap),
+            import_value_with_objects(Value, Objects, RefMap)
+        }
+     || {Key, Value} <- Pairs
     ]);
 import_object_data(_Type, {custom, _TypeName, WireData}, Objects, RefMap) ->
     import_value_with_objects(WireData, Objects, RefMap).

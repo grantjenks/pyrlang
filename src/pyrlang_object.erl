@@ -39,7 +39,8 @@ new_class(Name, Attrs) ->
 new_class(Name, Bases, Attrs0) ->
     new_class(Name, Bases, Attrs0, undefined).
 
--spec new_class(binary() | string() | atom(), [term()], map() | [{term(), term()}], term()) -> term().
+-spec new_class(binary() | string() | atom(), [term()], map() | [{term(), term()}], term()) ->
+    term().
 new_class(Name, Bases, Attrs0, Metaclass) ->
     Attrs = normalize_attrs(Attrs0),
     Ref = pyrlang_heap:placeholder(class),
@@ -158,12 +159,14 @@ get_attr({py_generic_alias, _Origin, _Args}, <<"__parameters__">>) ->
 get_attr({py_generic_alias, _Origin, _Args}, <<"__unpacked__">>) ->
     false;
 get_attr({py_generic_alias, Origin, _Args}, <<"__module__">>) ->
-    try get_attr(Origin, <<"__module__">>)
+    try
+        get_attr(Origin, <<"__module__">>)
     catch
         _:_ -> <<"types">>
     end;
 get_attr({py_generic_alias, Origin, _Args}, <<"__qualname__">>) ->
-    try get_attr(Origin, <<"__qualname__">>)
+    try
+        get_attr(Origin, <<"__qualname__">>)
     catch
         _:_ -> <<"GenericAlias">>
     end;
@@ -289,14 +292,18 @@ set_attr({py_ref, _} = Instance, Name0, Value) ->
                             pyrlang_heap:set_data(Instance, Data#{class := Value})
                     end;
                 <<"__dict__">> ->
-                    pyrlang_heap:set_data(Instance, Data#{attrs := attrs_from_dict_assignment(Value)});
+                    pyrlang_heap:set_data(Instance, Data#{
+                        attrs := attrs_from_dict_assignment(Value)
+                    });
                 _ ->
                     case lookup_data_descriptor(Class, Name) of
                         {ok, Descriptor} ->
                             descriptor_set(Descriptor, Instance, Value);
                         error ->
                             Attrs = maps:get(attrs, Data),
-                            pyrlang_heap:set_data(Instance, Data#{attrs := maps:put(Name, Value, Attrs)})
+                            pyrlang_heap:set_data(Instance, Data#{
+                                attrs := maps:put(Name, Value, Attrs)
+                            })
                     end
             end;
         list ->
@@ -332,7 +339,9 @@ exception_dunder_init([Self | Args]) ->
         true ->
             Data = pyrlang_heap:data(Self),
             Attrs = maps:get(attrs, Data),
-            ok = pyrlang_heap:set_data(Self, Data#{attrs := maps:put(<<"args">>, list_to_tuple(Args), Attrs)}),
+            ok = pyrlang_heap:set_data(Self, Data#{
+                attrs := maps:put(<<"args">>, list_to_tuple(Args), Attrs)
+            }),
             none;
         false ->
             none
@@ -368,8 +377,10 @@ del_attr({py_ref, _} = Ref, Name0) ->
                 error ->
                     Attrs = maps:get(attrs, Data),
                     case maps:is_key(Name, Attrs) of
-                        true -> pyrlang_heap:set_data(Ref, Data#{attrs := maps:remove(Name, Attrs)});
-                        false -> erlang:error({attribute_error, Name})
+                        true ->
+                            pyrlang_heap:set_data(Ref, Data#{attrs := maps:remove(Name, Attrs)});
+                        false ->
+                            erlang:error({attribute_error, Name})
                     end
             end;
         _Other ->
@@ -487,24 +498,42 @@ function_param_info(Params) ->
     function_param_info(Params, poskw, [], [], [], undefined, undefined).
 
 function_param_info([], _Section, PosOnly, PosKw, KwOnly, VarArg, KwRest) ->
-    #{posonly => lists:reverse(PosOnly), poskw => lists:reverse(PosKw), kwonly => lists:reverse(KwOnly), vararg => VarArg, kwrest => KwRest};
+    #{
+        posonly => lists:reverse(PosOnly),
+        poskw => lists:reverse(PosKw),
+        kwonly => lists:reverse(KwOnly),
+        vararg => VarArg,
+        kwrest => KwRest
+    };
 function_param_info([posonly_marker | Rest], poskw, PosOnly, PosKw, KwOnly, VarArg, KwRest) ->
     function_param_info(Rest, poskw, PosKw ++ PosOnly, [], KwOnly, VarArg, KwRest);
 function_param_info([kwonly_marker | Rest], _Section, PosOnly, PosKw, KwOnly, VarArg, KwRest) ->
     function_param_info(Rest, kwonly, PosOnly, PosKw, KwOnly, VarArg, KwRest);
-function_param_info([{param, Name, _Default, _Annotation} | Rest], kwonly, PosOnly, PosKw, KwOnly, VarArg, KwRest) ->
+function_param_info(
+    [{param, Name, _Default, _Annotation} | Rest], kwonly, PosOnly, PosKw, KwOnly, VarArg, KwRest
+) ->
     function_param_info(Rest, kwonly, PosOnly, PosKw, [Name | KwOnly], VarArg, KwRest);
-function_param_info([{param, Name, _Default} | Rest], kwonly, PosOnly, PosKw, KwOnly, VarArg, KwRest) ->
+function_param_info(
+    [{param, Name, _Default} | Rest], kwonly, PosOnly, PosKw, KwOnly, VarArg, KwRest
+) ->
     function_param_info(Rest, kwonly, PosOnly, PosKw, [Name | KwOnly], VarArg, KwRest);
-function_param_info([{param, Name, _Default, _Annotation} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, KwRest) when Section =:= poskw ->
+function_param_info(
+    [{param, Name, _Default, _Annotation} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, KwRest
+) when Section =:= poskw ->
     function_param_info(Rest, poskw, PosOnly, [Name | PosKw], KwOnly, VarArg, KwRest);
-function_param_info([{param, Name, _Default} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, KwRest) when Section =:= poskw ->
+function_param_info(
+    [{param, Name, _Default} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, KwRest
+) when Section =:= poskw ->
     function_param_info(Rest, poskw, PosOnly, [Name | PosKw], KwOnly, VarArg, KwRest);
-function_param_info([{vararg, Name, _Annotation} | Rest], _Section, PosOnly, PosKw, KwOnly, _VarArg, KwRest) ->
+function_param_info(
+    [{vararg, Name, _Annotation} | Rest], _Section, PosOnly, PosKw, KwOnly, _VarArg, KwRest
+) ->
     function_param_info(Rest, kwonly, PosOnly, PosKw, KwOnly, Name, KwRest);
 function_param_info([{vararg, Name} | Rest], _Section, PosOnly, PosKw, KwOnly, _VarArg, KwRest) ->
     function_param_info(Rest, kwonly, PosOnly, PosKw, KwOnly, Name, KwRest);
-function_param_info([{kwarg_rest, Name, _Annotation} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, _KwRest) ->
+function_param_info(
+    [{kwarg_rest, Name, _Annotation} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, _KwRest
+) ->
     function_param_info(Rest, Section, PosOnly, PosKw, KwOnly, VarArg, Name);
 function_param_info([{kwarg_rest, Name} | Rest], Section, PosOnly, PosKw, KwOnly, VarArg, _KwRest) ->
     function_param_info(Rest, Section, PosOnly, PosKw, KwOnly, VarArg, Name).
@@ -517,22 +546,34 @@ positional_params(Params) ->
     PosOnly ++ PosKw.
 
 keyword_only_defaults(Params) ->
-    [{param_name(Param), Value} || Param <- maps:get(kwonly, function_param_entries(Params)), {default, Value} <- [param_default(Param)]].
+    [
+        {param_name(Param), Value}
+     || Param <- maps:get(kwonly, function_param_entries(Params)),
+        {default, Value} <- [param_default(Param)]
+    ].
 
 function_param_entries(Params) ->
     function_param_entries(Params, poskw, [], [], []).
 
 function_param_entries([], _Section, PosOnly, PosKw, KwOnly) ->
-    #{posonly => lists:reverse(PosOnly), poskw => lists:reverse(PosKw), kwonly => lists:reverse(KwOnly)};
+    #{
+        posonly => lists:reverse(PosOnly),
+        poskw => lists:reverse(PosKw),
+        kwonly => lists:reverse(KwOnly)
+    };
 function_param_entries([posonly_marker | Rest], poskw, PosOnly, PosKw, KwOnly) ->
     function_param_entries(Rest, poskw, PosKw ++ PosOnly, [], KwOnly);
 function_param_entries([kwonly_marker | Rest], _Section, PosOnly, PosKw, KwOnly) ->
     function_param_entries(Rest, kwonly, PosOnly, PosKw, KwOnly);
-function_param_entries([{param, _Name, _Default, _Annotation} = Param | Rest], kwonly, PosOnly, PosKw, KwOnly) ->
+function_param_entries(
+    [{param, _Name, _Default, _Annotation} = Param | Rest], kwonly, PosOnly, PosKw, KwOnly
+) ->
     function_param_entries(Rest, kwonly, PosOnly, PosKw, [Param | KwOnly]);
 function_param_entries([{param, _Name, _Default} = Param | Rest], kwonly, PosOnly, PosKw, KwOnly) ->
     function_param_entries(Rest, kwonly, PosOnly, PosKw, [Param | KwOnly]);
-function_param_entries([{param, _Name, _Default, _Annotation} = Param | Rest], poskw, PosOnly, PosKw, KwOnly) ->
+function_param_entries(
+    [{param, _Name, _Default, _Annotation} = Param | Rest], poskw, PosOnly, PosKw, KwOnly
+) ->
     function_param_entries(Rest, poskw, PosOnly, [Param | PosKw], KwOnly);
 function_param_entries([{param, _Name, _Default} = Param | Rest], poskw, PosOnly, PosKw, KwOnly) ->
     function_param_entries(Rest, poskw, PosOnly, [Param | PosKw], KwOnly);
@@ -590,11 +631,17 @@ function_set_attr(Function, Name, Value) ->
     trace_object_flow(function_set_attr_done, {Name, Value}),
     ok.
 
-function_attr_key({py_function, Params, Body, _Env}, Name) when Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">> ->
+function_attr_key({py_function, Params, Body, _Env}, Name) when
+    Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">>
+->
     {py_function, Params, Body, Name};
-function_attr_key({py_function, Params, Body, _Env, Mode}, Name) when Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">> ->
+function_attr_key({py_function, Params, Body, _Env, Mode}, Name) when
+    Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">>
+->
     {py_function, Params, Body, Mode, Name};
-function_attr_key({py_function, Params, Body, _Env, Mode, _Owner}, Name) when Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">> ->
+function_attr_key({py_function, Params, Body, _Env, Mode, _Owner}, Name) when
+    Name =:= <<"__name__">>; Name =:= <<"__qualname__">>; Name =:= <<"__module__">>
+->
     {py_function, Params, Body, Mode, Name};
 function_attr_key({py_function, Params, Body, Env}, Name) ->
     function_identity_attr_key(Params, Body, Env, false, undefined, Name);
@@ -723,9 +770,11 @@ super_get_attr(Class, Instance, Name) ->
     Mro = super_mro(Class, Instance),
     Rest = drop_through_class(Class, Mro),
     case lookup_mro(Rest, Name) of
-        {ok, #{py_descriptor := true} = Value} when Name =:= <<"__new__">> -> bind_attr(Value, Instance, Class);
+        {ok, #{py_descriptor := true} = Value} when Name =:= <<"__new__">> ->
+            bind_attr(Value, Instance, Class);
         {ok, Value} when Name =:= <<"__new__">> -> Value;
-        {ok, Value} -> bind_attr(Value, Instance, Class);
+        {ok, Value} ->
+            bind_attr(Value, Instance, Class);
         error ->
             trace_super_miss(Class, Instance, Name, Mro, Rest),
             erlang:error({attribute_error, Name})
@@ -739,7 +788,14 @@ trace_super_miss(Class, Instance, Name, Mro, Rest) ->
             io:format(
                 standard_error,
                 "PYRLANG_SUPER_MISS class=~s instance=~s name=~s mro=~p rest=~p stack=~p~n",
-                [describe_value(Class), describe_value(Instance), Name, [describe_value(Value) || Value <- Mro], [describe_value(Value) || Value <- Rest], pyrlang_eval:trace_function_stack()]
+                [
+                    describe_value(Class),
+                    describe_value(Instance),
+                    Name,
+                    [describe_value(Value) || Value <- Mro],
+                    [describe_value(Value) || Value <- Rest],
+                    pyrlang_eval:trace_function_stack()
+                ]
             )
     end.
 
@@ -810,7 +866,9 @@ instance_get_attr(Instance, Name) ->
                 _ ->
                     Attrs = maps:get(attrs, Data),
                     case maps:find(Name, Attrs) of
-                        {ok, {py_lazy_type_alias_value, Expr, AliasEnv}} when Name =:= <<"__value__">> ->
+                        {ok, {py_lazy_type_alias_value, Expr, AliasEnv}} when
+                            Name =:= <<"__value__">>
+                        ->
                             {Value, _Env1} = pyrlang_eval:eval_expr(Expr, AliasEnv),
                             Value;
                         {ok, Value} ->
@@ -872,7 +930,8 @@ is_string_subclass_instance({py_ref, _} = Ref) ->
     ).
 
 class_named({py_ref, _} = Class, Name) ->
-    try pyrlang_heap:type(Class) =:= class andalso class_name(Class) =:= Name
+    try
+        pyrlang_heap:type(Class) =:= class andalso class_name(Class) =:= Name
     catch
         _:_ -> false
     end;
@@ -911,7 +970,8 @@ class_get_attr(Class, <<"mro">>) ->
     end};
 class_get_attr(Class, Name) ->
     case lookup_class_attr(Class, Name) of
-        {ok, Value} -> bind_class_attr(Value, Class);
+        {ok, Value} ->
+            bind_class_attr(Value, Class);
         error ->
             case maps:get(metaclass, pyrlang_heap:data(Class), undefined) of
                 undefined ->
@@ -943,7 +1003,10 @@ public_class_attrs(Attrs) ->
 
 public_class_attr_items(Attrs) ->
     Public = public_class_attrs(Attrs),
-    Ordered = [Name || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Public)],
+    Ordered = [
+        Name
+     || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Public)
+    ],
     Remaining = [Name || Name <- maps:keys(Public), not lists:member(Name, Ordered)],
     [{Name, maps:get(Name, Public)} || Name <- Ordered ++ Remaining].
 
@@ -1055,7 +1118,10 @@ bind_function_owner(Class, {py_function, Params, Body, Env}) ->
 bind_function_owner(Class, {py_function, Params, Body, Env, IsGenerator}) ->
     {py_function, Params, Body, Env, IsGenerator, Class};
 bind_function_owner(Class, #{py_descriptor := true, kind := property} = Descriptor) ->
-    case maps:is_key(fget, Descriptor) orelse maps:is_key(fset, Descriptor) orelse maps:is_key(fdel, Descriptor) of
+    case
+        maps:is_key(fget, Descriptor) orelse maps:is_key(fset, Descriptor) orelse
+            maps:is_key(fdel, Descriptor)
+    of
         true -> bind_property_function_owner(Class, Descriptor);
         false -> Descriptor
     end;
@@ -1123,7 +1189,9 @@ bind_instance_function_attrs(Class, {py_ref, _} = Ref) ->
         instance ->
             Data = pyrlang_heap:data(Ref),
             Attrs = maps:get(attrs, Data, #{}),
-            UpdatedAttrs = maps:map(fun(_Name, Value) -> bind_function_owner(Class, Value) end, Attrs),
+            UpdatedAttrs = maps:map(
+                fun(_Name, Value) -> bind_function_owner(Class, Value) end, Attrs
+            ),
             ok = pyrlang_heap:set_data(Ref, Data#{attrs := UpdatedAttrs});
         _ ->
             ok
@@ -1165,15 +1233,13 @@ is_descriptor(_Value) ->
 is_data_descriptor(#{kind := property}) ->
     true;
 is_data_descriptor(Value) when is_map(Value) ->
-    is_descriptor(Value) andalso (
-        maps:get(set, Value, undefined) =/= undefined orelse
-        maps:get(del, Value, undefined) =/= undefined
-    );
+    is_descriptor(Value) andalso
+        (maps:get(set, Value, undefined) =/= undefined orelse
+            maps:get(del, Value, undefined) =/= undefined);
 is_data_descriptor({py_ref, _} = Value) ->
-    is_descriptor(Value) andalso (
-        has_descriptor_method(Value, <<"__set__">>) orelse
-        has_descriptor_method(Value, <<"__delete__">>)
-    );
+    is_descriptor(Value) andalso
+        (has_descriptor_method(Value, <<"__set__">>) orelse
+            has_descriptor_method(Value, <<"__delete__">>));
 is_data_descriptor(_Value) ->
     false.
 
@@ -1362,7 +1428,9 @@ list_builtin_get_attr(Ref, <<"__setitem__">>) ->
     end;
 list_builtin_get_attr(Ref, <<"extend">>) ->
     fun(Other) ->
-        lists:foreach(fun(Value) -> ok = pyrlang_heap:list_append(Ref, Value) end, iterable_values(Other)),
+        lists:foreach(
+            fun(Value) -> ok = pyrlang_heap:list_append(Ref, Value) end, iterable_values(Other)
+        ),
         none
     end;
 list_builtin_get_attr(Ref, <<"clear">>) ->
@@ -1388,7 +1456,9 @@ list_builtin_get_attr(Ref, <<"remove">>) ->
                 ok = pyrlang_heap:set_data(Ref, Items),
                 none;
             error ->
-                pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value))
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value)
+                )
         end
     end;
 list_builtin_get_attr(Ref, <<"reverse">>) ->
@@ -1426,7 +1496,11 @@ list_index(Ref, [Value, Start0, Stop0]) ->
         {ok, Index} ->
             Index;
         error ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"list.index(x): x not in list">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>), <<"list.index(x): x not in list">>
+                )
+            )
     end;
 list_index(_Ref, Args) ->
     erlang:error({arity_error, {list_index, length(Args)}}).
@@ -1459,7 +1533,11 @@ list_pop(Ref, Args) ->
     Items = pyrlang_heap:list_items(Ref),
     case Items of
         [] ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), <<"pop from empty list">>));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"IndexError">>), <<"pop from empty list">>
+                )
+            );
         _ ->
             Index =
                 case Args of
@@ -1473,8 +1551,10 @@ list_pop(Ref, Args) ->
             Value
     end.
 
-list_index_value(true) -> 1;
-list_index_value(false) -> 0;
+list_index_value(true) ->
+    1;
+list_index_value(false) ->
+    0;
 list_index_value(Index) when is_integer(Index) -> Index;
 list_index_value({py_ref, _} = Index) ->
     case pyrlang_builtins:int_subclass_value(Index) of
@@ -1504,13 +1584,23 @@ object_index_value(Object) ->
 normalize_list_index(Index, Length) when Index < 0 ->
     Normalized = Length + Index,
     case Normalized >= 0 of
-        true -> Normalized;
-        false -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), <<"pop index out of range">>))
+        true ->
+            Normalized;
+        false ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"IndexError">>), <<"pop index out of range">>
+                )
+            )
     end;
 normalize_list_index(Index, Length) when Index >= 0, Index < Length ->
     Index;
 normalize_list_index(_Index, _Length) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IndexError">>), <<"pop index out of range">>)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"IndexError">>), <<"pop index out of range">>
+        )
+    ).
 
 list_sort(Ref, [], KwArgs) ->
     Key = maps:get(<<"key">>, KwArgs, none),
@@ -1708,22 +1798,30 @@ dict_pop(Ref, Key, Default) ->
             Value;
         error ->
             case Default of
-                {default, Value} -> Value;
-                no_default -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key))
+                {default, Value} ->
+                    Value;
+                no_default ->
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key)
+                    )
             end
     end.
 
 dict_update(Ref, [], KwArgs) ->
     maps:foreach(fun(Key, Value) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end, KwArgs);
 dict_update(Ref, [Other], KwArgs) ->
-    lists:foreach(fun({Key, Value}) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end, dict_update_items(Other)),
+    lists:foreach(
+        fun({Key, Value}) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end,
+        dict_update_items(Other)
+    ),
     dict_update(Ref, [], KwArgs);
 dict_update(_Ref, Args, _KwArgs) ->
     erlang:error({arity_error, {dict_update, length(Args)}}).
 
 dict_update_items({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
-        dict -> pyrlang_heap:dict_items(Ref);
+        dict ->
+            pyrlang_heap:dict_items(Ref);
         _Type ->
             case dict_mapping_items(Ref) of
                 {ok, Items} -> Items;
@@ -1786,7 +1884,9 @@ set_get_attr(Ref, <<"remove">>) ->
                 ok = pyrlang_heap:set_remove(Ref, Value),
                 none;
             false ->
-                pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Value))
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Value)
+                )
         end
     end;
 set_get_attr(Ref, <<"union">>) ->
@@ -1804,7 +1904,9 @@ set_get_attr(Ref, <<"difference">>) ->
     end};
 set_get_attr(Ref, <<"difference_update">>) ->
     {py_native_varargs, fun(Args) ->
-        ok = pyrlang_heap:set_data(Ref, keyed_set_items(set_difference_items(pyrlang_heap:set_items(Ref), Args))),
+        ok = pyrlang_heap:set_data(
+            Ref, keyed_set_items(set_difference_items(pyrlang_heap:set_items(Ref), Args))
+        ),
         none
     end};
 set_get_attr(Ref, <<"intersection">>) ->
@@ -1813,16 +1915,25 @@ set_get_attr(Ref, <<"intersection">>) ->
     end};
 set_get_attr(Ref, <<"intersection_update">>) ->
     {py_native_varargs, fun(Args) ->
-        ok = pyrlang_heap:set_data(Ref, keyed_set_items(set_intersection_items(pyrlang_heap:set_items(Ref), Args))),
+        ok = pyrlang_heap:set_data(
+            Ref, keyed_set_items(set_intersection_items(pyrlang_heap:set_items(Ref), Args))
+        ),
         none
     end};
 set_get_attr(Ref, <<"symmetric_difference">>) ->
     fun(Other) ->
-        pyrlang_heap:set(set_symmetric_difference_items(pyrlang_heap:set_items(Ref), iterable_values(Other)))
+        pyrlang_heap:set(
+            set_symmetric_difference_items(pyrlang_heap:set_items(Ref), iterable_values(Other))
+        )
     end;
 set_get_attr(Ref, <<"symmetric_difference_update">>) ->
     fun(Other) ->
-        ok = pyrlang_heap:set_data(Ref, keyed_set_items(set_symmetric_difference_items(pyrlang_heap:set_items(Ref), iterable_values(Other)))),
+        ok = pyrlang_heap:set_data(
+            Ref,
+            keyed_set_items(
+                set_symmetric_difference_items(pyrlang_heap:set_items(Ref), iterable_values(Other))
+            )
+        ),
         none
     end;
 set_get_attr(Ref, <<"update">>) ->
@@ -1837,18 +1948,30 @@ set_get_attr(Ref, <<"issuperset">>) ->
     end;
 set_get_attr(Ref, <<"issubset">>) ->
     fun(Other) ->
-        OtherKeys = maps:from_list([{pyrlang_heap:value_key(Value), true} || Value <- iterable_values(Other)]),
-        lists:all(fun(Value) -> maps:is_key(pyrlang_heap:value_key(Value), OtherKeys) end, pyrlang_heap:set_items(Ref))
+        OtherKeys = maps:from_list([
+            {pyrlang_heap:value_key(Value), true}
+         || Value <- iterable_values(Other)
+        ]),
+        lists:all(
+            fun(Value) -> maps:is_key(pyrlang_heap:value_key(Value), OtherKeys) end,
+            pyrlang_heap:set_items(Ref)
+        )
     end;
 set_get_attr(Ref, <<"isdisjoint">>) ->
     fun(Other) ->
-        not lists:any(fun(Value) -> pyrlang_heap:set_contains(Ref, Value) end, iterable_values(Other))
+        not lists:any(
+            fun(Value) -> pyrlang_heap:set_contains(Ref, Value) end, iterable_values(Other)
+        )
     end;
 set_get_attr(Ref, <<"pop">>) ->
     fun() ->
         case pyrlang_heap:set_items(Ref) of
             [] ->
-                pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), <<"pop from an empty set">>));
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(
+                        pyrlang_exception:type(<<"KeyError">>), <<"pop from an empty set">>
+                    )
+                );
             [Value | _Rest] ->
                 ok = pyrlang_heap:set_remove(Ref, Value),
                 Value
@@ -1867,7 +1990,7 @@ keyed_set_items(Items) ->
 set_difference_items(Items, Args) ->
     RemoveKeys = maps:from_list([
         {pyrlang_heap:value_key(Value), true}
-        || Value <- lists:append([iterable_values(Arg) || Arg <- Args])
+     || Value <- lists:append([iterable_values(Arg) || Arg <- Args])
     ]),
     [Item || Item <- Items, not maps:is_key(pyrlang_heap:value_key(Item), RemoveKeys)].
 
@@ -1876,9 +1999,13 @@ set_intersection_items(Items, []) ->
 set_intersection_items(Items, Args) ->
     OtherKeySets = [
         maps:from_list([{pyrlang_heap:value_key(Value), true} || Value <- iterable_values(Arg)])
-        || Arg <- Args
+     || Arg <- Args
     ],
-    [Item || Item <- Items, lists:all(fun(Keys) -> maps:is_key(pyrlang_heap:value_key(Item), Keys) end, OtherKeySets)].
+    [
+        Item
+     || Item <- Items,
+        lists:all(fun(Keys) -> maps:is_key(pyrlang_heap:value_key(Item), Keys) end, OtherKeySets)
+    ].
 
 set_symmetric_difference_items(LeftItems, RightItems) ->
     Left = keyed_set_items(LeftItems),
@@ -1944,11 +2071,17 @@ generator_throw(Args) ->
 
 generator_throw_exception(Exception) ->
     case pyrlang_exception:is_exception(Exception) of
-        true -> Exception;
+        true ->
+            Exception;
         false ->
             case Exception of
-                {py_exception_type, _} = Type -> pyrlang_exception:make(Type);
-                _ -> pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), <<"exceptions must derive from BaseException">>)
+                {py_exception_type, _} = Type ->
+                    pyrlang_exception:make(Type);
+                _ ->
+                    pyrlang_exception:make(
+                        pyrlang_exception:type(<<"TypeError">>),
+                        <<"exceptions must derive from BaseException">>
+                    )
             end
     end.
 
@@ -1993,7 +2126,7 @@ remove_candidate(Candidate, Seqs) ->
             [Candidate | Tail] -> Tail;
             _ -> Seq
         end
-        || Seq <- Seqs
+     || Seq <- Seqs
     ].
 
 normalize_attrs(Attrs) when is_map(Attrs) ->

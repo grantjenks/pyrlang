@@ -12,11 +12,13 @@ eval_expr(Source) ->
     start(),
     case pyrlang_parser:parse_expr(Source) of
         {ok, Ast} ->
-            try {ok, pyrlang_eval:eval_expr(Ast)}
+            try
+                {ok, pyrlang_eval:eval_expr(Ast)}
             catch
                 throw:{py_exception, Exception} -> {error, Exception}
             end;
-        {error, Reason} -> {error, Reason}
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 -spec run_string(binary() | string()) -> {ok, term(), map()} | {error, term()}.
@@ -69,5 +71,6 @@ run_file(Path0, Args) ->
                 {error, Reason} ->
                     {error, Reason}
             end;
-        {error, Reason} -> {error, Reason}
+        {error, Reason} ->
+            {error, Reason}
     end.

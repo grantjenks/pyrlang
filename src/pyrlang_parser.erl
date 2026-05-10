@@ -62,7 +62,9 @@ keep_line(Line) ->
     Trimmed =/= "" andalso not lists:prefix("#", Trimmed).
 
 logical_lines(Lines) ->
-    Prepared0 = strip_standalone_triple_strings(join_backslash_continuation_lines(join_multiline_triple_strings(Lines))),
+    Prepared0 = strip_standalone_triple_strings(
+        join_backslash_continuation_lines(join_multiline_triple_strings(Lines))
+    ),
     WithoutComments = [strip_inline_comment(Line) || Line <- Prepared0],
     Prepared = join_continuation_lines(WithoutComments),
     [{indent(Line), string:trim(Line)} || Line <- Prepared, keep_line(Line)].
@@ -269,7 +271,9 @@ standalone_triple_quote_start_unprefixed(_Line) ->
 contains_triple_quote(Text, Quote) ->
     string:str(Text, Quote) > 0.
 
-strip_string_prefix([Ch | Rest]) when Ch =:= $r; Ch =:= $R; Ch =:= $u; Ch =:= $U; Ch =:= $b; Ch =:= $B; Ch =:= $f; Ch =:= $F ->
+strip_string_prefix([Ch | Rest]) when
+    Ch =:= $r; Ch =:= $R; Ch =:= $u; Ch =:= $U; Ch =:= $b; Ch =:= $B; Ch =:= $f; Ch =:= $F
+->
     strip_string_prefix(Rest);
 strip_string_prefix(Line) ->
     Line.
@@ -299,7 +303,9 @@ parse_block([], _Indent) ->
     {[], []};
 parse_block([{Indent, _Text} | _Rest] = Lines, CurrentIndent) when Indent < CurrentIndent ->
     {[], Lines};
-parse_block([{Indent, [$@ | _DecoratorText]} | _Rest] = Lines, CurrentIndent) when Indent =:= CurrentIndent ->
+parse_block([{Indent, [$@ | _DecoratorText]} | _Rest] = Lines, CurrentIndent) when
+    Indent =:= CurrentIndent
+->
     {Decorators, [{Indent, Text} | Rest1]} = parse_decorator_lines(Lines, CurrentIndent, []),
     {Statement0, Rest2} = parse_statement(Text, Rest1, CurrentIndent),
     Statement = apply_decorators_to_statement(Decorators, Statement0),
@@ -322,7 +328,10 @@ parse_block([{Indent, Text} | _Rest], CurrentIndent) when Indent > CurrentIndent
 simple_statement_parts(Text) ->
     case can_split_simple_statement_line(Text) of
         true ->
-            Parts = [string:trim(Part) || Part <- split_top_level_semicolons(Text), string:trim(Part) =/= ""],
+            Parts = [
+                string:trim(Part)
+             || Part <- split_top_level_semicolons(Text), string:trim(Part) =/= ""
+            ],
             case Parts of
                 [] -> [Text];
                 [_Single] -> [Text];
@@ -421,7 +430,9 @@ parse_statement(Line, Rest, CurrentIndent) ->
                             {ElseBody, Rest2} = parse_if_tail(Rest, CurrentIndent),
                             {{if_stmt, Condition, ThenBody, ElseBody}, Rest2};
                         {ok, Condition} ->
-                            {ThenBody, Rest1} = parse_required_child_block(Line, Rest, CurrentIndent),
+                            {ThenBody, Rest1} = parse_required_child_block(
+                                Line, Rest, CurrentIndent
+                            ),
                             {ElseBody, Rest2} = parse_if_tail(Rest1, CurrentIndent),
                             {{if_stmt, Condition, ThenBody, ElseBody}, Rest2};
                         not_if ->
@@ -479,9 +490,17 @@ parse_non_if_compound(Line, Rest, CurrentIndent) ->
                                 not_match ->
                                     case parse_try_header(Line) of
                                         ok ->
-                                            {Body, Rest1} = parse_required_child_block(Line, Rest, CurrentIndent),
-                                            {Handlers, ElseBody, FinallyBody, Rest2} = parse_try_clauses(Rest1, CurrentIndent, [], [], []),
-                                            {{try_stmt, Body, lists:reverse(Handlers), ElseBody, FinallyBody}, Rest2};
+                                            {Body, Rest1} = parse_required_child_block(
+                                                Line, Rest, CurrentIndent
+                                            ),
+                                            {Handlers, ElseBody, FinallyBody, Rest2} = parse_try_clauses(
+                                                Rest1, CurrentIndent, [], [], []
+                                            ),
+                                            {
+                                                {try_stmt, Body, lists:reverse(Handlers), ElseBody,
+                                                    FinallyBody},
+                                                Rest2
+                                            };
                                         not_try ->
                                             {parse_simple_statement(Line), Rest}
                                     end
@@ -502,7 +521,10 @@ parse_else_clause(SuiteSource, Rest, Indent) ->
     end.
 
 parse_inline_suite_statements(SuiteSource) ->
-    Parts = [string:trim(Part) || Part <- split_top_level_semicolons(SuiteSource), string:trim(Part) =/= ""],
+    Parts = [
+        string:trim(Part)
+     || Part <- split_top_level_semicolons(SuiteSource), string:trim(Part) =/= ""
+    ],
     [parse_simple_statement(Part) || Part <- Parts].
 
 parse_required_child_block(Line, Rest, CurrentIndent) ->
@@ -591,7 +613,7 @@ split_raise_from(Text) ->
 
 split_raise_from([], _Acc, _Depth, _Quote) ->
     none;
-split_raise_from([$ , $f, $r, $o, $m, $  | Rest], Acc, 0, none) ->
+split_raise_from([$\s, $f, $r, $o, $m, $\s | Rest], Acc, 0, none) ->
     {lists:reverse(Acc), Rest};
 split_raise_from([$", $", $" | Rest], Acc, Depth, none) ->
     split_raise_from_triple(Rest, [$", $", $" | Acc], Depth, $");
@@ -702,8 +724,13 @@ parse_import_statement("from " ++ Rest) ->
             NormalizedNamesText = normalize_from_import_names_text(NamesText),
             Specs =
                 case NormalizedNamesText of
-                    "*" -> star;
-                    _ -> [parse_from_import_spec(Part) || Part <- split_import_names(NormalizedNamesText)]
+                    "*" ->
+                        star;
+                    _ ->
+                        [
+                            parse_from_import_spec(Part)
+                         || Part <- split_import_names(NormalizedNamesText)
+                        ]
                 end,
             {ok, {from_import, normalize_module_name(ModuleText), Specs}};
         _ ->
@@ -729,7 +756,8 @@ split_import_names(NamesText) ->
 
 parse_import_spec(Spec) ->
     case string:split(Spec, " as ", leading) of
-        [Name, Alias] -> {normalize_module_name(Name), list_to_binary(string:trim(Alias)), explicit};
+        [Name, Alias] ->
+            {normalize_module_name(Name), list_to_binary(string:trim(Alias)), explicit};
         [Name] ->
             Module = normalize_module_name(Name),
             {Module, default_import_alias(Module), default}
@@ -737,7 +765,8 @@ parse_import_spec(Spec) ->
 
 parse_from_import_spec(Spec) ->
     case string:split(Spec, " as ", leading) of
-        [Name, Alias] -> {list_to_binary(string:trim(Name)), list_to_binary(string:trim(Alias))};
+        [Name, Alias] ->
+            {list_to_binary(string:trim(Name)), list_to_binary(string:trim(Alias))};
         [Name] ->
             Bin = list_to_binary(string:trim(Name)),
             {Bin, Bin}
@@ -790,7 +819,9 @@ parse_def_after_name(Name, [$[ | AfterOpen]) ->
 parse_def_after_name(_Name, _AfterName) ->
     not_def.
 
-take_identifier([Ch | Rest], Acc) when Ch >= $A, Ch =< $Z; Ch >= $a, Ch =< $z; Ch >= $0, Ch =< $9; Ch =:= $_ ->
+take_identifier([Ch | Rest], Acc) when
+    Ch >= $A, Ch =< $Z; Ch >= $a, Ch =< $z; Ch >= $0, Ch =< $9; Ch =:= $_
+->
     take_identifier(Rest, [Ch | Acc]);
 take_identifier(Rest, Acc) ->
     {lists:reverse(Acc), Rest}.
@@ -885,7 +916,9 @@ parse_class_suffix(Name, BasesText, [$: | Rest]) ->
             parse_class_suffix(Name, BasesText, ":");
         SuiteText ->
             {Bases, Metaclass, Keywords} = parse_class_items(BasesText),
-            {ok_inline, list_to_binary(Name), Bases, Metaclass, Keywords, [parse_simple_statement(SuiteText)]}
+            {ok_inline, list_to_binary(Name), Bases, Metaclass, Keywords, [
+                parse_simple_statement(SuiteText)
+            ]}
     end;
 parse_class_suffix(_Name, _BasesText, _Suffix) ->
     not_class.
@@ -952,7 +985,10 @@ parse_with_header(_Line) ->
     not_with.
 
 parse_with_spec(Spec) ->
-    Items = [Item || Item <- [string:trim(Part) || Part <- split_top_level_commas(Spec)], Item =/= ""],
+    Items = [
+        Item
+     || Item <- [string:trim(Part) || Part <- split_top_level_commas(Spec)], Item =/= ""
+    ],
     case Items of
         [] -> throw({bad_with_manager, Spec, empty});
         _ -> {ok, [parse_with_item(Item) || Item <- Items]}
@@ -1060,7 +1096,7 @@ split_top_level_case_guard([Ch | Rest], Depth, none, Acc) when Ch =:= $(; Ch =:=
     split_top_level_case_guard(Rest, Depth + 1, none, [Ch | Acc]);
 split_top_level_case_guard([Ch | Rest], Depth, none, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
     split_top_level_case_guard(Rest, Depth - 1, none, [Ch | Acc]);
-split_top_level_case_guard([$ , $i, $f, $  | Rest], 0, none, Acc) ->
+split_top_level_case_guard([$\s, $i, $f, $\s | Rest], 0, none, Acc) ->
     {lists:reverse(Acc), string:trim(Rest)};
 split_top_level_case_guard([Ch | Rest], Depth, Quote, Acc) ->
     split_top_level_case_guard(Rest, Depth, Quote, [Ch | Acc]).
@@ -1073,7 +1109,12 @@ parse_match_pattern(PatternSource0) ->
         "" ->
             throw(empty_match_pattern);
         _ ->
-            case [string:trim(Part) || Part <- split_top_level_pattern_or(PatternSource), string:trim(Part) =/= ""] of
+            case
+                [
+                    string:trim(Part)
+                 || Part <- split_top_level_pattern_or(PatternSource), string:trim(Part) =/= ""
+                ]
+            of
                 [Single] ->
                     parse_non_wildcard_match_pattern(Single);
                 Parts ->
@@ -1128,7 +1169,9 @@ split_class_pattern_open(Prefix) ->
 
 split_class_pattern_open([], _Depth, _Quote, _AfterOpen, _ClassAcc) ->
     none;
-split_class_pattern_open([$\\, Escaped | Rest], Depth, Quote, AfterOpen, ClassAcc) when Quote =/= none ->
+split_class_pattern_open([$\\, Escaped | Rest], Depth, Quote, AfterOpen, ClassAcc) when
+    Quote =/= none
+->
     split_class_pattern_open(Rest, Depth, Quote, [Escaped, $\\ | AfterOpen], ClassAcc);
 split_class_pattern_open([Quote | Rest], Depth, Quote, AfterOpen, ClassAcc) ->
     split_class_pattern_open(Rest, Depth, none, [Quote | AfterOpen], ClassAcc);
@@ -1155,7 +1198,10 @@ split_class_pattern_open([Ch | Rest], Depth, Quote, AfterOpen, ClassAcc) ->
 parse_match_pattern_args("") ->
     {[], []};
 parse_match_pattern_args(ArgsSource) ->
-    Items = [string:trim(Item) || Item <- split_top_level_commas(ArgsSource), string:trim(Item) =/= ""],
+    Items = [
+        string:trim(Item)
+     || Item <- split_top_level_commas(ArgsSource), string:trim(Item) =/= ""
+    ],
     parse_match_pattern_args(Items, [], []).
 
 parse_match_pattern_args([], Positional, Keywords) ->
@@ -1163,7 +1209,9 @@ parse_match_pattern_args([], Positional, Keywords) ->
 parse_match_pattern_args([Item | Rest], Positional, Keywords) ->
     case split_top_level_keyword(Item) of
         {keyword, Name, PatternSource} ->
-            parse_match_pattern_args(Rest, Positional, [{list_to_binary(Name), parse_match_pattern(PatternSource)} | Keywords]);
+            parse_match_pattern_args(Rest, Positional, [
+                {list_to_binary(Name), parse_match_pattern(PatternSource)} | Keywords
+            ]);
         none ->
             parse_match_pattern_args(Rest, [parse_match_pattern(Item) | Positional], Keywords)
     end.
@@ -1172,8 +1220,10 @@ parse_condition_header(Rest, Kind) ->
     case split_inline_suite(Rest) of
         {ConditionSource, SuiteSource} ->
             case parse_expr(string:trim(ConditionSource)) of
-                {ok, Expr} -> {ok_inline, Expr, parse_inline_suite_statements(string:trim(SuiteSource))};
-                {error, Reason} -> throw({bad_condition, Kind, ConditionSource, Reason})
+                {ok, Expr} ->
+                    {ok_inline, Expr, parse_inline_suite_statements(string:trim(SuiteSource))};
+                {error, Reason} ->
+                    throw({bad_condition, Kind, ConditionSource, Reason})
             end;
         none ->
             case lists:reverse(Rest) of
@@ -1209,7 +1259,7 @@ split_inline_suite([Ch | Rest], Balance, none, Acc) when Ch =:= $(; Ch =:= $[; C
     split_inline_suite(Rest, Balance + 1, none, [Ch | Acc]);
 split_inline_suite([Ch | Rest], Balance, none, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
     split_inline_suite(Rest, Balance - 1, none, [Ch | Acc]);
-split_inline_suite([$:,$= | Rest], Balance, none, Acc) ->
+split_inline_suite([$:, $= | Rest], Balance, none, Acc) ->
     split_inline_suite(Rest, Balance, none, [$=, $: | Acc]);
 split_inline_suite([$: | Rest], 0, none, Acc) ->
     case string:trim(Rest) of
@@ -1225,7 +1275,10 @@ parse_class_items(BasesText) ->
         "" ->
             {[], undefined, []};
         _ ->
-            Items = [Item || Item <- [string:trim(B) || B <- split_top_level_commas(Trimmed)], Item =/= ""],
+            Items = [
+                Item
+             || Item <- [string:trim(B) || B <- split_top_level_commas(Trimmed)], Item =/= ""
+            ],
             parse_class_items(Items, [], undefined, [])
     end.
 
@@ -1242,8 +1295,12 @@ parse_class_items([Base | Rest], Bases, Metaclass, Keywords) ->
     case split_top_level_keyword(Base) of
         {keyword, Name, ExprSource} ->
             case parse_expr(ExprSource) of
-                {ok, Expr} -> parse_class_items(Rest, Bases, Metaclass, [{list_to_binary(Name), Expr} | Keywords]);
-                {error, Reason} -> throw({bad_class_keyword, Base, Reason})
+                {ok, Expr} ->
+                    parse_class_items(Rest, Bases, Metaclass, [
+                        {list_to_binary(Name), Expr} | Keywords
+                    ]);
+                {error, Reason} ->
+                    throw({bad_class_keyword, Base, Reason})
             end;
         none ->
             case parse_expr(Base) of
@@ -1258,7 +1315,10 @@ parse_params(ParamsText) ->
         "" ->
             [];
         _ ->
-            [parse_param(Param) || Param <- [string:trim(P) || P <- split_top_level_commas(Trimmed)], Param =/= ""]
+            [
+                parse_param(Param)
+             || Param <- [string:trim(P) || P <- split_top_level_commas(Trimmed)], Param =/= ""
+            ]
     end.
 
 split_top_level_commas(Text) ->
@@ -1274,9 +1334,13 @@ split_top_level_commas([$" | Rest], Depth, none, Current, Acc) ->
     split_top_level_commas(Rest, Depth, $", [$" | Current], Acc);
 split_top_level_commas([$' | Rest], Depth, none, Current, Acc) ->
     split_top_level_commas(Rest, Depth, $', [$' | Current], Acc);
-split_top_level_commas([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $(; Ch =:= $[; Ch =:= ${ ->
+split_top_level_commas([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $(; Ch =:= $[; Ch =:= ${
+->
     split_top_level_commas(Rest, Depth + 1, none, [Ch | Current], Acc);
-split_top_level_commas([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
+split_top_level_commas([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $); Ch =:= $]; Ch =:= $}
+->
     split_top_level_commas(Rest, Depth - 1, none, [Ch | Current], Acc);
 split_top_level_commas([$, | Rest], 0, none, Current, Acc) ->
     split_top_level_commas(Rest, 0, none, [], [lists:reverse(Current) | Acc]);
@@ -1296,9 +1360,13 @@ split_top_level_pattern_or([$" | Rest], Depth, none, Current, Acc) ->
     split_top_level_pattern_or(Rest, Depth, $", [$" | Current], Acc);
 split_top_level_pattern_or([$' | Rest], Depth, none, Current, Acc) ->
     split_top_level_pattern_or(Rest, Depth, $', [$' | Current], Acc);
-split_top_level_pattern_or([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $(; Ch =:= $[; Ch =:= ${ ->
+split_top_level_pattern_or([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $(; Ch =:= $[; Ch =:= ${
+->
     split_top_level_pattern_or(Rest, Depth + 1, none, [Ch | Current], Acc);
-split_top_level_pattern_or([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
+split_top_level_pattern_or([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $); Ch =:= $]; Ch =:= $}
+->
     split_top_level_pattern_or(Rest, Depth - 1, none, [Ch | Current], Acc);
 split_top_level_pattern_or([$| | Rest], 0, none, Current, Acc) ->
     split_top_level_pattern_or(Rest, 0, none, [], [lists:reverse(Current) | Acc]);
@@ -1326,9 +1394,13 @@ split_top_level_semicolons([$" | Rest], Depth, none, Current, Acc) ->
     split_top_level_semicolons(Rest, Depth, $", [$" | Current], Acc);
 split_top_level_semicolons([$' | Rest], Depth, none, Current, Acc) ->
     split_top_level_semicolons(Rest, Depth, $', [$' | Current], Acc);
-split_top_level_semicolons([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $(; Ch =:= $[; Ch =:= ${ ->
+split_top_level_semicolons([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $(; Ch =:= $[; Ch =:= ${
+->
     split_top_level_semicolons(Rest, Depth + 1, none, [Ch | Current], Acc);
-split_top_level_semicolons([Ch | Rest], Depth, none, Current, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
+split_top_level_semicolons([Ch | Rest], Depth, none, Current, Acc) when
+    Ch =:= $); Ch =:= $]; Ch =:= $}
+->
     split_top_level_semicolons(Rest, Depth - 1, none, [Ch | Current], Acc);
 split_top_level_semicolons([$; | Rest], 0, none, Current, Acc) ->
     split_top_level_semicolons(Rest, 0, none, [], [lists:reverse(Current) | Acc]);
@@ -1453,7 +1525,9 @@ parse_except_header(_Line) ->
     not_except.
 
 parse_except_spec(Spec) ->
-    case re:run(Spec, "^(.*)\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*)$", [unicode, {capture, [1, 2], list}]) of
+    case
+        re:run(Spec, "^(.*)\\s+as\\s+([A-Za-z_][A-Za-z0-9_]*)$", [unicode, {capture, [1, 2], list}])
+    of
         {match, [ExprSource, Binding]} ->
             {ok, parse_exception_pattern(string:trim(ExprSource)), list_to_binary(Binding)};
         nomatch ->
@@ -1469,11 +1543,17 @@ parse_exception_pattern(ExprSource) ->
     end.
 
 split_augmented_assignment(Line) ->
-    case re:run(Line, "^(.*?)\\s*(<<=|>>=|\\+=|-=|\\*=|//=|/=|%=|\\|=|&=|\\^=)\\s*(.+)$", [unicode, {capture, [1, 2, 3], list}]) of
+    case
+        re:run(Line, "^(.*?)\\s*(<<=|>>=|\\+=|-=|\\*=|//=|/=|%=|\\|=|&=|\\^=)\\s*(.+)$", [
+            unicode, {capture, [1, 2, 3], list}
+        ])
+    of
         {match, [TargetText, OpText, ExprSource]} ->
             case parse_assignment_target(string:trim(TargetText)) of
-                {ok, Target} -> {aug_assign, Target, augmented_assignment_op(OpText), string:trim(ExprSource)};
-                error -> none
+                {ok, Target} ->
+                    {aug_assign, Target, augmented_assignment_op(OpText), string:trim(ExprSource)};
+                error ->
+                    none
             end;
         nomatch ->
             none
@@ -1563,8 +1643,11 @@ split_assignment(Line) ->
             case parse_assignment_target(Target) of
                 {ok, AssignmentTarget} ->
                     case split_assignment(RightTrimmed) of
-                        expr -> assignment_statement_for_target(AssignmentTarget, RightTrimmed);
-                        Next -> {assign_chain, [AssignmentTarget | assignment_targets(Next)], assignment_expr_source(Next)}
+                        expr ->
+                            assignment_statement_for_target(AssignmentTarget, RightTrimmed);
+                        Next ->
+                            {assign_chain, [AssignmentTarget | assignment_targets(Next)],
+                                assignment_expr_source(Next)}
                     end;
                 error ->
                     expr
@@ -1624,7 +1707,8 @@ valid_name([First | Rest]) ->
     is_name_start(First) andalso lists:all(fun is_name_continue/1, Rest).
 
 parse_assignment_target(TargetText) ->
-    try parse_assignment_target_tokens(tokens(TargetText))
+    try
+        parse_assignment_target_tokens(tokens(TargetText))
     catch
         _Class:_Reason -> error
     end.
@@ -1703,42 +1787,50 @@ lex([Ch | Rest], Acc) when Ch >= $0, Ch =< $9 ->
     lex(Tail, [Token | Acc]);
 lex([P1, P2, $", $", $" | Rest], Acc) when
     ((P1 =:= $b orelse P1 =:= $B) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B))
+->
     {Bytes, Tail} = take_raw_triple_string(Rest, $", []),
     lex(Tail, [{bytes, unicode:characters_to_binary(Bytes)} | Acc]);
 lex([P1, P2, $', $', $' | Rest], Acc) when
     ((P1 =:= $b orelse P1 =:= $B) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B))
+->
     {Bytes, Tail} = take_raw_triple_string(Rest, $', []),
     lex(Tail, [{bytes, unicode:characters_to_binary(Bytes)} | Acc]);
 lex([P1, P2, $" | Rest], Acc) when
     ((P1 =:= $b orelse P1 =:= $B) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B))
+->
     {Bytes, Tail} = take_raw_string(Rest, $", []),
     lex(Tail, [{bytes, unicode:characters_to_binary(Bytes)} | Acc]);
 lex([P1, P2, $' | Rest], Acc) when
     ((P1 =:= $b orelse P1 =:= $B) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $b orelse P2 =:= $B))
+->
     {Bytes, Tail} = take_raw_string(Rest, $', []),
     lex(Tail, [{bytes, unicode:characters_to_binary(Bytes)} | Acc]);
 lex([P1, P2, $", $", $" | Rest], Acc) when
     ((P1 =:= $f orelse P1 =:= $F) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F))
+->
     {String, Tail} = take_fstring_triple_string(Rest, $", []),
     lex(Tail, [{fstr, unicode:characters_to_binary(String)} | Acc]);
 lex([P1, P2, $', $', $' | Rest], Acc) when
     ((P1 =:= $f orelse P1 =:= $F) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F))
+->
     {String, Tail} = take_fstring_triple_string(Rest, $', []),
     lex(Tail, [{fstr, unicode:characters_to_binary(String)} | Acc]);
 lex([P1, P2, $" | Rest], Acc) when
     ((P1 =:= $f orelse P1 =:= $F) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F))
+->
     {String, Tail} = take_fstring_string(Rest, $", []),
     lex(Tail, [{fstr, unicode:characters_to_binary(String)} | Acc]);
 lex([P1, P2, $' | Rest], Acc) when
     ((P1 =:= $f orelse P1 =:= $F) andalso (P2 =:= $r orelse P2 =:= $R)) orelse
-    ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F)) ->
+        ((P1 =:= $r orelse P1 =:= $R) andalso (P2 =:= $f orelse P2 =:= $F))
+->
     {String, Tail} = take_fstring_string(Rest, $', []),
     lex(Tail, [{fstr, unicode:characters_to_binary(String)} | Acc]);
 lex([$b, $", $", $" | Rest], Acc) ->
@@ -1847,37 +1939,68 @@ lex([Ch | Rest], Acc) when Ch =:= $_; Ch >= $A, Ch =< $Z; Ch >= $a, Ch =< $z ->
             _ -> {name, list_to_binary(Name)}
         end,
     lex(Tail, [Token | Acc]);
-lex([$+ | Rest], Acc) -> lex(Rest, [plus | Acc]);
-lex([$- | Rest], Acc) -> lex(Rest, [minus | Acc]);
-lex([$*, $* | Rest], Acc) -> lex(Rest, [starstar | Acc]);
-lex([$* | Rest], Acc) -> lex(Rest, [star | Acc]);
-lex([$/, $/ | Rest], Acc) -> lex(Rest, [floor_div | Acc]);
-lex([$/ | Rest], Acc) -> lex(Rest, [slash | Acc]);
-lex([$% | Rest], Acc) -> lex(Rest, [percent | Acc]);
-lex([$| | Rest], Acc) -> lex(Rest, [pipe | Acc]);
-lex([$& | Rest], Acc) -> lex(Rest, [amp | Acc]);
-lex([$^ | Rest], Acc) -> lex(Rest, [caret | Acc]);
-lex([$~ | Rest], Acc) -> lex(Rest, [tilde | Acc]);
-lex([$=, $= | Rest], Acc) -> lex(Rest, [eqeq | Acc]);
-lex([$= | Rest], Acc) -> lex(Rest, [equal | Acc]);
-lex([$!, $= | Rest], Acc) -> lex(Rest, [noteq | Acc]);
-lex([$<, $< | Rest], Acc) -> lex(Rest, [lshift | Acc]);
-lex([$<, $= | Rest], Acc) -> lex(Rest, [lte | Acc]);
-lex([$>, $> | Rest], Acc) -> lex(Rest, [rshift | Acc]);
-lex([$>, $= | Rest], Acc) -> lex(Rest, [gte | Acc]);
-lex([$< | Rest], Acc) -> lex(Rest, [lt | Acc]);
-lex([$> | Rest], Acc) -> lex(Rest, [gt | Acc]);
-lex([$( | Rest], Acc) -> lex(Rest, [lparen | Acc]);
-lex([$) | Rest], Acc) -> lex(Rest, [rparen | Acc]);
-lex([$., $., $. | Rest], Acc) -> lex(Rest, [ellipsis | Acc]);
-lex([$. | Rest], Acc) -> lex(Rest, [dot | Acc]);
-lex([$[ | Rest], Acc) -> lex(Rest, [lbracket | Acc]);
-lex([$] | Rest], Acc) -> lex(Rest, [rbracket | Acc]);
-lex([${ | Rest], Acc) -> lex(Rest, [lbrace | Acc]);
-lex([$} | Rest], Acc) -> lex(Rest, [rbrace | Acc]);
-lex([$, | Rest], Acc) -> lex(Rest, [comma | Acc]);
-lex([$:,$= | Rest], Acc) -> lex(Rest, [walrus | Acc]);
-lex([$: | Rest], Acc) -> lex(Rest, [colon | Acc]);
+lex([$+ | Rest], Acc) ->
+    lex(Rest, [plus | Acc]);
+lex([$- | Rest], Acc) ->
+    lex(Rest, [minus | Acc]);
+lex([$*, $* | Rest], Acc) ->
+    lex(Rest, [starstar | Acc]);
+lex([$* | Rest], Acc) ->
+    lex(Rest, [star | Acc]);
+lex([$/, $/ | Rest], Acc) ->
+    lex(Rest, [floor_div | Acc]);
+lex([$/ | Rest], Acc) ->
+    lex(Rest, [slash | Acc]);
+lex([$% | Rest], Acc) ->
+    lex(Rest, [percent | Acc]);
+lex([$| | Rest], Acc) ->
+    lex(Rest, [pipe | Acc]);
+lex([$& | Rest], Acc) ->
+    lex(Rest, [amp | Acc]);
+lex([$^ | Rest], Acc) ->
+    lex(Rest, [caret | Acc]);
+lex([$~ | Rest], Acc) ->
+    lex(Rest, [tilde | Acc]);
+lex([$=, $= | Rest], Acc) ->
+    lex(Rest, [eqeq | Acc]);
+lex([$= | Rest], Acc) ->
+    lex(Rest, [equal | Acc]);
+lex([$!, $= | Rest], Acc) ->
+    lex(Rest, [noteq | Acc]);
+lex([$<, $< | Rest], Acc) ->
+    lex(Rest, [lshift | Acc]);
+lex([$<, $= | Rest], Acc) ->
+    lex(Rest, [lte | Acc]);
+lex([$>, $> | Rest], Acc) ->
+    lex(Rest, [rshift | Acc]);
+lex([$>, $= | Rest], Acc) ->
+    lex(Rest, [gte | Acc]);
+lex([$< | Rest], Acc) ->
+    lex(Rest, [lt | Acc]);
+lex([$> | Rest], Acc) ->
+    lex(Rest, [gt | Acc]);
+lex([$( | Rest], Acc) ->
+    lex(Rest, [lparen | Acc]);
+lex([$) | Rest], Acc) ->
+    lex(Rest, [rparen | Acc]);
+lex([$., $., $. | Rest], Acc) ->
+    lex(Rest, [ellipsis | Acc]);
+lex([$. | Rest], Acc) ->
+    lex(Rest, [dot | Acc]);
+lex([$[ | Rest], Acc) ->
+    lex(Rest, [lbracket | Acc]);
+lex([$] | Rest], Acc) ->
+    lex(Rest, [rbracket | Acc]);
+lex([${ | Rest], Acc) ->
+    lex(Rest, [lbrace | Acc]);
+lex([$} | Rest], Acc) ->
+    lex(Rest, [rbrace | Acc]);
+lex([$, | Rest], Acc) ->
+    lex(Rest, [comma | Acc]);
+lex([$:, $= | Rest], Acc) ->
+    lex(Rest, [walrus | Acc]);
+lex([$: | Rest], Acc) ->
+    lex(Rest, [colon | Acc]);
 lex([Ch | _Rest], _Acc) ->
     throw({unexpected_character, Ch}).
 
@@ -1980,17 +2103,28 @@ take_triple_string([Ch | Rest], Quote, Acc) ->
 take_triple_string([], _Quote, _Acc) ->
     throw(unterminated_string).
 
-take_escape([$a | Rest]) -> {[7], Rest};
-take_escape([$b | Rest]) -> {[8], Rest};
-take_escape([$f | Rest]) -> {[12], Rest};
-take_escape([$n | Rest]) -> {[$\n], Rest};
-take_escape([$r | Rest]) -> {[$\r], Rest};
-take_escape([$t | Rest]) -> {[$\t], Rest};
-take_escape([$v | Rest]) -> {[11], Rest};
-take_escape([$\\ | Rest]) -> {[$\\], Rest};
-take_escape([$' | Rest]) -> {[$'], Rest};
-take_escape([$" | Rest]) -> {[$"], Rest};
-take_escape([$\n | Rest]) -> {[], Rest};
+take_escape([$a | Rest]) ->
+    {[7], Rest};
+take_escape([$b | Rest]) ->
+    {[8], Rest};
+take_escape([$f | Rest]) ->
+    {[12], Rest};
+take_escape([$n | Rest]) ->
+    {[$\n], Rest};
+take_escape([$r | Rest]) ->
+    {[$\r], Rest};
+take_escape([$t | Rest]) ->
+    {[$\t], Rest};
+take_escape([$v | Rest]) ->
+    {[11], Rest};
+take_escape([$\\ | Rest]) ->
+    {[$\\], Rest};
+take_escape([$' | Rest]) ->
+    {[$'], Rest};
+take_escape([$" | Rest]) ->
+    {[$"], Rest};
+take_escape([$\n | Rest]) ->
+    {[], Rest};
 take_escape([$x, A, B | Rest]) ->
     {[hex_escape([A, B])], Rest};
 take_escape([$u, A, B, C, D | Rest]) ->
@@ -2039,7 +2173,9 @@ take_fstring_string([Quote | Rest], Quote, literal, _Depth, _ExprQuote, Acc) ->
     {lists:reverse(Acc), Rest};
 take_fstring_string([${ | Rest], Quote, literal, _Depth, _ExprQuote, Acc) ->
     take_fstring_string(Rest, Quote, expr, 0, none, [${ | Acc]);
-take_fstring_string([$\\, Escaped | Rest], Quote, expr, Depth, ExprQuote, Acc) when ExprQuote =/= none ->
+take_fstring_string([$\\, Escaped | Rest], Quote, expr, Depth, ExprQuote, Acc) when
+    ExprQuote =/= none
+->
     take_fstring_string(Rest, Quote, expr, Depth, ExprQuote, [Escaped, $\\ | Acc]);
 take_fstring_string([ExprQuote | Rest], Quote, expr, Depth, ExprQuote, Acc) ->
     take_fstring_string(Rest, Quote, expr, Depth, none, [ExprQuote | Acc]);
@@ -2047,11 +2183,15 @@ take_fstring_string([$" | Rest], Quote, expr, Depth, none, Acc) ->
     take_fstring_string(Rest, Quote, expr, Depth, $", [$" | Acc]);
 take_fstring_string([$' | Rest], Quote, expr, Depth, none, Acc) ->
     take_fstring_string(Rest, Quote, expr, Depth, $', [$' | Acc]);
-take_fstring_string([Ch | Rest], Quote, expr, Depth, none, Acc) when Ch =:= $(; Ch =:= $[; Ch =:= ${ ->
+take_fstring_string([Ch | Rest], Quote, expr, Depth, none, Acc) when
+    Ch =:= $(; Ch =:= $[; Ch =:= ${
+->
     take_fstring_string(Rest, Quote, expr, Depth + 1, none, [Ch | Acc]);
 take_fstring_string([$} | Rest], Quote, expr, 0, none, Acc) ->
     take_fstring_string(Rest, Quote, literal, 0, none, [$} | Acc]);
-take_fstring_string([Ch | Rest], Quote, expr, Depth, none, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
+take_fstring_string([Ch | Rest], Quote, expr, Depth, none, Acc) when
+    Ch =:= $); Ch =:= $]; Ch =:= $}
+->
     take_fstring_string(Rest, Quote, expr, Depth - 1, none, [Ch | Acc]);
 take_fstring_string([Ch | Rest], Quote, Mode, Depth, ExprQuote, Acc) ->
     take_fstring_string(Rest, Quote, Mode, Depth, ExprQuote, [Ch | Acc]);
@@ -2065,7 +2205,9 @@ take_fstring_triple_string([Quote, Quote, Quote | Rest], Quote, literal, _Depth,
     {lists:reverse(Acc), Rest};
 take_fstring_triple_string([${ | Rest], Quote, literal, _Depth, _ExprQuote, Acc) ->
     take_fstring_triple_string(Rest, Quote, expr, 0, none, [${ | Acc]);
-take_fstring_triple_string([$\\, Escaped | Rest], Quote, expr, Depth, ExprQuote, Acc) when ExprQuote =/= none ->
+take_fstring_triple_string([$\\, Escaped | Rest], Quote, expr, Depth, ExprQuote, Acc) when
+    ExprQuote =/= none
+->
     take_fstring_triple_string(Rest, Quote, expr, Depth, ExprQuote, [Escaped, $\\ | Acc]);
 take_fstring_triple_string([ExprQuote | Rest], Quote, expr, Depth, ExprQuote, Acc) ->
     take_fstring_triple_string(Rest, Quote, expr, Depth, none, [ExprQuote | Acc]);
@@ -2073,11 +2215,15 @@ take_fstring_triple_string([$" | Rest], Quote, expr, Depth, none, Acc) ->
     take_fstring_triple_string(Rest, Quote, expr, Depth, $", [$" | Acc]);
 take_fstring_triple_string([$' | Rest], Quote, expr, Depth, none, Acc) ->
     take_fstring_triple_string(Rest, Quote, expr, Depth, $', [$' | Acc]);
-take_fstring_triple_string([Ch | Rest], Quote, expr, Depth, none, Acc) when Ch =:= $(; Ch =:= $[; Ch =:= ${ ->
+take_fstring_triple_string([Ch | Rest], Quote, expr, Depth, none, Acc) when
+    Ch =:= $(; Ch =:= $[; Ch =:= ${
+->
     take_fstring_triple_string(Rest, Quote, expr, Depth + 1, none, [Ch | Acc]);
 take_fstring_triple_string([$} | Rest], Quote, expr, 0, none, Acc) ->
     take_fstring_triple_string(Rest, Quote, literal, 0, none, [$} | Acc]);
-take_fstring_triple_string([Ch | Rest], Quote, expr, Depth, none, Acc) when Ch =:= $); Ch =:= $]; Ch =:= $} ->
+take_fstring_triple_string([Ch | Rest], Quote, expr, Depth, none, Acc) when
+    Ch =:= $); Ch =:= $]; Ch =:= $}
+->
     take_fstring_triple_string(Rest, Quote, expr, Depth - 1, none, [Ch | Acc]);
 take_fstring_triple_string([Ch | Rest], Quote, Mode, Depth, ExprQuote, Acc) ->
     take_fstring_triple_string(Rest, Quote, Mode, Depth, ExprQuote, [Ch | Acc]);
@@ -2159,9 +2305,13 @@ split_lambda_param_groups([colon | Rest], 0, Current, Acc) ->
     {lists:reverse(flush_lambda_param(Current, Acc)), Rest};
 split_lambda_param_groups([comma | Rest], 0, Current, Acc) ->
     split_lambda_param_groups(Rest, 0, [], flush_lambda_param(Current, Acc));
-split_lambda_param_groups([Token | Rest], Depth, Current, Acc) when Token =:= lparen; Token =:= lbracket; Token =:= lbrace ->
+split_lambda_param_groups([Token | Rest], Depth, Current, Acc) when
+    Token =:= lparen; Token =:= lbracket; Token =:= lbrace
+->
     split_lambda_param_groups(Rest, Depth + 1, [Token | Current], Acc);
-split_lambda_param_groups([Token | Rest], Depth, Current, Acc) when Token =:= rparen; Token =:= rbracket; Token =:= rbrace ->
+split_lambda_param_groups([Token | Rest], Depth, Current, Acc) when
+    Token =:= rparen; Token =:= rbracket; Token =:= rbrace
+->
     split_lambda_param_groups(Rest, Depth - 1, [Token | Current], Acc);
 split_lambda_param_groups([Token | Rest], Depth, Current, Acc) ->
     split_lambda_param_groups(Rest, Depth, [Token | Current], Acc);
@@ -2387,9 +2537,12 @@ parse_primary([lparen | Rest]) ->
                 [rparen | Rest4] -> {{gen_expr, Expr, Clauses}, Rest4};
                 _ -> throw({expected, rparen})
             end;
-        [comma | Rest2] -> parse_tuple_literal(Rest2, [Expr]);
-        [rparen | Rest2] -> {Expr, Rest2};
-        _ -> throw({expected, rparen})
+        [comma | Rest2] ->
+            parse_tuple_literal(Rest2, [Expr]);
+        [rparen | Rest2] ->
+            {Expr, Rest2};
+        _ ->
+            throw({expected, rparen})
     end;
 parse_primary([lbracket | Rest]) ->
     parse_list_literal(Rest, []);
@@ -2453,7 +2606,8 @@ parse_fstring_expr(ExprText0) ->
                 none -> {formatted, Expr, Conversion, FormatSpec};
                 Prefix -> {formatted_debug, Prefix, Expr, Conversion, FormatSpec}
             end;
-        {error, Reason} -> throw({bad_fstring_expression, ExprText, Reason})
+        {error, Reason} ->
+            throw({bad_fstring_expression, ExprText, Reason})
     end.
 
 split_fstring_conversion(ExprText) ->
@@ -2583,10 +2737,14 @@ parse_arg_list(Tokens, Acc) ->
         [async_kw, for_kw | _Rest1] = CompRest ->
             {Clauses, Rest2} = parse_comprehension_clauses(CompRest),
             parse_generator_arg(Expr, Clauses, Rest2, Acc);
-        [comma, rparen | Rest2] -> {lists:reverse([{arg, Expr} | Acc]), Rest2};
-        [comma | Rest2] -> parse_arg_list(Rest2, [{arg, Expr} | Acc]);
-        [rparen | Rest2] -> {lists:reverse([{arg, Expr} | Acc]), Rest2};
-        _ -> throw({expected, comma_or_rparen})
+        [comma, rparen | Rest2] ->
+            {lists:reverse([{arg, Expr} | Acc]), Rest2};
+        [comma | Rest2] ->
+            parse_arg_list(Rest2, [{arg, Expr} | Acc]);
+        [rparen | Rest2] ->
+            {lists:reverse([{arg, Expr} | Acc]), Rest2};
+        _ ->
+            throw({expected, comma_or_rparen})
     end.
 
 parse_comprehension_clauses([for_kw | Rest]) ->
@@ -2743,10 +2901,14 @@ parse_dict_literal_value(Key, Tokens, Acc) ->
         [async_kw, for_kw | _Rest1] = CompRest when Acc =:= [] ->
             {Clauses, Rest2} = parse_comprehension_clauses(CompRest),
             parse_dict_comprehension(Key, Value, Clauses, Rest2);
-        [comma, rbrace | Rest2] -> {{dict, lists:reverse([{Key, Value} | Acc])}, Rest2};
-        [comma | Rest2] -> parse_dict_literal(Rest2, [{Key, Value} | Acc]);
-        [rbrace | Rest2] -> {{dict, lists:reverse([{Key, Value} | Acc])}, Rest2};
-        _ -> throw({expected, comma_or_rbrace})
+        [comma, rbrace | Rest2] ->
+            {{dict, lists:reverse([{Key, Value} | Acc])}, Rest2};
+        [comma | Rest2] ->
+            parse_dict_literal(Rest2, [{Key, Value} | Acc]);
+        [rbrace | Rest2] ->
+            {{dict, lists:reverse([{Key, Value} | Acc])}, Rest2};
+        _ ->
+            throw({expected, comma_or_rbrace})
     end.
 
 parse_dict_unpack_literal(Tokens, Acc) ->
@@ -2766,10 +2928,14 @@ parse_set_literal_after_expr(Expr, Rest, Acc) ->
         [async_kw, for_kw | _Rest1] = CompRest when Acc =:= [] ->
             {Clauses, Rest2} = parse_comprehension_clauses(CompRest),
             parse_set_comprehension(Expr, Clauses, Rest2);
-        [comma, rbrace | Rest2] -> {{set, lists:reverse([Expr | Acc])}, Rest2};
-        [comma | Rest2] -> parse_set_literal(Rest2, [Expr | Acc]);
-        [rbrace | Rest2] -> {{set, lists:reverse([Expr | Acc])}, Rest2};
-        _ -> throw({expected, comma_or_rbrace})
+        [comma, rbrace | Rest2] ->
+            {{set, lists:reverse([Expr | Acc])}, Rest2};
+        [comma | Rest2] ->
+            parse_set_literal(Rest2, [Expr | Acc]);
+        [rbrace | Rest2] ->
+            {{set, lists:reverse([Expr | Acc])}, Rest2};
+        _ ->
+            throw({expected, comma_or_rbrace})
     end.
 
 parse_set_unpack_literal(Tokens, Acc) ->

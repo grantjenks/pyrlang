@@ -29,9 +29,13 @@ match({py_var, Name}, Value, Bindings) ->
         {ok, _Other} -> nomatch;
         error -> {ok, maps:put(Name, Value, Bindings)}
     end;
-match(Pattern, Value, Bindings) when is_tuple(Pattern), is_tuple(Value), tuple_size(Pattern) =:= tuple_size(Value) ->
+match(Pattern, Value, Bindings) when
+    is_tuple(Pattern), is_tuple(Value), tuple_size(Pattern) =:= tuple_size(Value)
+->
     match_tuple(Pattern, Value, 1, tuple_size(Pattern), Bindings);
-match(Pattern, Value, Bindings) when is_list(Pattern), is_list(Value), length(Pattern) =:= length(Value) ->
+match(Pattern, Value, Bindings) when
+    is_list(Pattern), is_list(Value), length(Pattern) =:= length(Value)
+->
     match_list(Pattern, Value, Bindings);
 match(Pattern, Value, Bindings) when is_map(Pattern), is_map(Value) ->
     match_map(maps:to_list(Pattern), Value, Bindings);

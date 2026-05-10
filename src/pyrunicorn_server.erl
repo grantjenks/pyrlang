@@ -110,7 +110,9 @@ accept_loop(State = #{listen := Listen, workers := Workers, next := NextWorker})
         case gen_tcp:accept(Listen, 100) of
             {ok, Socket} ->
                 Worker = maps:get(pid, lists:nth(NextWorker, Workers)),
-                _ = erlang:spawn(fun() -> handle_socket(Socket, Worker, maps:get(options, State)) end),
+                _ = erlang:spawn(fun() ->
+                    handle_socket(Socket, Worker, maps:get(options, State))
+                end),
                 accept_loop(State#{next := next_worker(NextWorker, length(Workers))});
             {error, timeout} ->
                 accept_loop(State);
@@ -161,9 +163,17 @@ handle_socket(Socket, Worker, Options) ->
             Response =
                 case pyrunicorn_http:parse_request(Request) of
                     {ok, Method, Target, Headers, Body} ->
-                        pyrunicorn_http:format_response(response_for_request(Worker, Method, Target, Headers, Body, RequestOptions, Options));
+                        pyrunicorn_http:format_response(
+                            response_for_request(
+                                Worker, Method, Target, Headers, Body, RequestOptions, Options
+                            )
+                        );
                     {error, Reason} ->
-                        pyrunicorn_http:format_response({<<"400 Bad Request">>, [{<<"content-type">>, <<"text/plain">>}], [format_error(Reason)]})
+                        pyrunicorn_http:format_response(
+                            {<<"400 Bad Request">>, [{<<"content-type">>, <<"text/plain">>}], [
+                                format_error(Reason)
+                            ]}
+                        )
                 end,
             ok = gen_tcp:send(Socket, Response),
             gen_tcp:close(Socket);
@@ -198,12 +208,14 @@ request_complete(Data) ->
 
 content_length(Head) ->
     Lines = binary:split(Head, <<"\r\n">>, [global]),
-    case [
-        parse_content_length(Value)
-        || Line <- Lines,
-           [Name, Value] <- [binary:split(Line, <<":">>)],
-           string:lowercase(Name) =:= <<"content-length">>
-    ] of
+    case
+        [
+            parse_content_length(Value)
+         || Line <- Lines,
+            [Name, Value] <- [binary:split(Line, <<":">>)],
+            string:lowercase(Name) =:= <<"content-length">>
+        ]
+    of
         [{ok, Length} | _] -> Length;
         [error | _] -> 0;
         [] -> 0
@@ -258,7 +270,9 @@ worker_response(Worker, Method, Target, Headers, Body, RequestOptions) ->
     catch
         Class:Reason:Stacktrace ->
             trace_worker_error(Class, Reason, Stacktrace),
-            {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [<<"internal server error">>]}
+            {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [
+                <<"internal server error">>
+            ]}
     end.
 
 static_response(Target, Options) ->
@@ -274,7 +288,9 @@ static_response(Target, Options) ->
                 {ok, FilePath, Content} ->
                     {<<"200 OK">>, [{<<"content-type">>, content_type(FilePath)}], [Content]};
                 not_found ->
-                    {<<"404 Not Found">>, [{<<"content-type">>, <<"text/plain">>}], [<<"not found">>]}
+                    {<<"404 Not Found">>, [{<<"content-type">>, <<"text/plain">>}], [
+                        <<"not found">>
+                    ]}
             end
     end.
 
@@ -326,8 +342,8 @@ default_static_roots() ->
     {ok, Cwd} = file:get_cwd(),
     Roots =
         [filename:join(Cwd, "static")] ++
-        filelib:wildcard(filename:join(Cwd, "*/static")) ++
-        lists:flatmap(fun module_static_roots/1, pyrlang_module:path()),
+            filelib:wildcard(filename:join(Cwd, "*/static")) ++
+            lists:flatmap(fun module_static_roots/1, pyrlang_module:path()),
     lists:usort([Root || Root <- Roots, filelib:is_dir(Root)]).
 
 module_static_roots(Base0) ->

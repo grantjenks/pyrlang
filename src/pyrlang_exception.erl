@@ -148,7 +148,9 @@ raise({py_ref, _} = Exception) ->
                     raise(pyrlang_eval:call(Exception, []));
                 false ->
                     trace_raise(Exception, non_exception_ref),
-                    raise(make(type(<<"TypeError">>), <<"exceptions must derive from BaseException">>))
+                    raise(
+                        make(type(<<"TypeError">>), <<"exceptions must derive from BaseException">>)
+                    )
             end
     end;
 raise({py_exception_type, _Type} = Type) ->
@@ -157,25 +159,38 @@ raise(Message) ->
     raise(make(Message)).
 
 trace_raise(Exception, Kind) ->
-    case os:getenv("PYRLANG_TRACE_RAISE_ALL") =/= false orelse (Kind =:= non_exception_ref andalso os:getenv("PYRLANG_TRACE_RAISE") =/= false) of
+    case
+        os:getenv("PYRLANG_TRACE_RAISE_ALL") =/= false orelse
+            (Kind =:= non_exception_ref andalso os:getenv("PYRLANG_TRACE_RAISE") =/= false)
+    of
         true ->
             io:format(
                 standard_error,
                 "PYRLANG_RAISE kind=~p type=~p message=~p exception=~p stack=~p~n",
-                [Kind, safe_exception_type(Exception), safe_message(Exception), Exception, pyrlang_eval:trace_function_stack()]
+                [
+                    Kind,
+                    safe_exception_type(Exception),
+                    safe_message(Exception),
+                    Exception,
+                    pyrlang_eval:trace_function_stack()
+                ]
             );
         false ->
             ok
     end.
 
 safe_exception_type(Exception) ->
-    try exception_type(Exception)
-    catch _:_ -> undefined
+    try
+        exception_type(Exception)
+    catch
+        _:_ -> undefined
     end.
 
 safe_message(Exception) ->
-    try message(Exception)
-    catch _:_ -> undefined
+    try
+        message(Exception)
+    catch
+        _:_ -> undefined
     end.
 
 normalize_message(Value) when is_binary(Value) ->
@@ -203,49 +218,95 @@ exception_type_matches(_Type, <<"Exception">>) ->
 exception_type_matches(Type, Expected) ->
     lists:member(Expected, exception_type_bases(Type)).
 
-exception_type_bases(<<"BlockingIOError">>) -> [<<"OSError">>];
-exception_type_bases(<<"ChildProcessError">>) -> [<<"OSError">>];
-exception_type_bases(<<"ConnectionAbortedError">>) -> [<<"ConnectionError">>, <<"OSError">>];
-exception_type_bases(<<"ConnectionRefusedError">>) -> [<<"ConnectionError">>, <<"OSError">>];
-exception_type_bases(<<"ConnectionResetError">>) -> [<<"ConnectionError">>, <<"OSError">>];
-exception_type_bases(<<"ConnectionError">>) -> [<<"OSError">>];
-exception_type_bases(<<"FileExistsError">>) -> [<<"OSError">>];
-exception_type_bases(<<"FileNotFoundError">>) -> [<<"OSError">>];
-exception_type_bases(<<"InterruptedError">>) -> [<<"OSError">>];
-exception_type_bases(<<"IsADirectoryError">>) -> [<<"OSError">>];
-exception_type_bases(<<"NotADirectoryError">>) -> [<<"OSError">>];
-exception_type_bases(<<"PermissionError">>) -> [<<"OSError">>];
-exception_type_bases(<<"TimeoutError">>) -> [<<"OSError">>];
-exception_type_bases(<<"ModuleNotFoundError">>) -> [<<"ImportError">>];
-exception_type_bases(<<"IndexError">>) -> [<<"LookupError">>];
-exception_type_bases(<<"KeyError">>) -> [<<"LookupError">>];
-exception_type_bases(<<"FloatingPointError">>) -> [<<"ArithmeticError">>];
-exception_type_bases(<<"OverflowError">>) -> [<<"ArithmeticError">>];
-exception_type_bases(<<"ZeroDivisionError">>) -> [<<"ArithmeticError">>];
-exception_type_bases(<<"DecimalException">>) -> [<<"ArithmeticError">>];
-exception_type_bases(<<"InvalidOperation">>) -> [<<"DecimalException">>, <<"ArithmeticError">>];
-exception_type_bases(<<"Rounded">>) -> [<<"DecimalException">>, <<"ArithmeticError">>];
-exception_type_bases(<<"RecursionError">>) -> [<<"RuntimeError">>];
-exception_type_bases(<<"UnicodeDecodeError">>) -> [<<"UnicodeError">>];
-exception_type_bases(<<"UnicodeEncodeError">>) -> [<<"UnicodeError">>];
-exception_type_bases(<<"UnicodeTranslateError">>) -> [<<"UnicodeError">>];
-exception_type_bases(<<"DatabaseError">>) -> [<<"Error">>];
-exception_type_bases(<<"DataError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"OperationalError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"IntegrityError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"InternalError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"ProgrammingError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"NotSupportedError">>) -> [<<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"InterfaceError">>) -> [<<"Error">>];
-exception_type_bases(<<"DuplicateDatabase">>) -> [<<"ProgrammingError">>, <<"DatabaseError">>, <<"Error">>];
-exception_type_bases(<<"BytesWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"DeprecationWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"FutureWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"ImportWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"PendingDeprecationWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"ResourceWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"RuntimeWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"SyntaxWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"UnicodeWarning">>) -> [<<"Warning">>];
-exception_type_bases(<<"UserWarning">>) -> [<<"Warning">>];
-exception_type_bases(_Type) -> [].
+exception_type_bases(<<"BlockingIOError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"ChildProcessError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"ConnectionAbortedError">>) ->
+    [<<"ConnectionError">>, <<"OSError">>];
+exception_type_bases(<<"ConnectionRefusedError">>) ->
+    [<<"ConnectionError">>, <<"OSError">>];
+exception_type_bases(<<"ConnectionResetError">>) ->
+    [<<"ConnectionError">>, <<"OSError">>];
+exception_type_bases(<<"ConnectionError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"FileExistsError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"FileNotFoundError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"InterruptedError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"IsADirectoryError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"NotADirectoryError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"PermissionError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"TimeoutError">>) ->
+    [<<"OSError">>];
+exception_type_bases(<<"ModuleNotFoundError">>) ->
+    [<<"ImportError">>];
+exception_type_bases(<<"IndexError">>) ->
+    [<<"LookupError">>];
+exception_type_bases(<<"KeyError">>) ->
+    [<<"LookupError">>];
+exception_type_bases(<<"FloatingPointError">>) ->
+    [<<"ArithmeticError">>];
+exception_type_bases(<<"OverflowError">>) ->
+    [<<"ArithmeticError">>];
+exception_type_bases(<<"ZeroDivisionError">>) ->
+    [<<"ArithmeticError">>];
+exception_type_bases(<<"DecimalException">>) ->
+    [<<"ArithmeticError">>];
+exception_type_bases(<<"InvalidOperation">>) ->
+    [<<"DecimalException">>, <<"ArithmeticError">>];
+exception_type_bases(<<"Rounded">>) ->
+    [<<"DecimalException">>, <<"ArithmeticError">>];
+exception_type_bases(<<"RecursionError">>) ->
+    [<<"RuntimeError">>];
+exception_type_bases(<<"UnicodeDecodeError">>) ->
+    [<<"UnicodeError">>];
+exception_type_bases(<<"UnicodeEncodeError">>) ->
+    [<<"UnicodeError">>];
+exception_type_bases(<<"UnicodeTranslateError">>) ->
+    [<<"UnicodeError">>];
+exception_type_bases(<<"DatabaseError">>) ->
+    [<<"Error">>];
+exception_type_bases(<<"DataError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"OperationalError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"IntegrityError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"InternalError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"ProgrammingError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"NotSupportedError">>) ->
+    [<<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"InterfaceError">>) ->
+    [<<"Error">>];
+exception_type_bases(<<"DuplicateDatabase">>) ->
+    [<<"ProgrammingError">>, <<"DatabaseError">>, <<"Error">>];
+exception_type_bases(<<"BytesWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"DeprecationWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"FutureWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"ImportWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"PendingDeprecationWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"ResourceWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"RuntimeWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"SyntaxWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"UnicodeWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(<<"UserWarning">>) ->
+    [<<"Warning">>];
+exception_type_bases(_Type) ->
+    [].

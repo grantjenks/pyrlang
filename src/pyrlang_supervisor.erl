@@ -102,7 +102,7 @@ should_restart(#{restart := permanent}, _Reason) ->
 child_summary(State) ->
     [
         {Id, maps:get(pid, Child), maps:get(restart, maps:get(spec, Child))}
-        || {Id, Child} <- maps:to_list(maps:get(children, State))
+     || {Id, Child} <- maps:to_list(maps:get(children, State))
     ].
 
 stop_children(State) ->

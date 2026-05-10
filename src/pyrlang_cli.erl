@@ -20,7 +20,9 @@ run(Args) ->
     case parse_args(Args) of
         {ok, #{file := File, file_args := FileArgs, path := ExtraPath}} ->
             FilePath = to_list(File),
-            ok = pyrlang:set_path(ExtraPath ++ [filename:dirname(FilePath) | pyrlang_module:path()]),
+            ok = pyrlang:set_path(
+                ExtraPath ++ [filename:dirname(FilePath) | pyrlang_module:path()]
+            ),
             case pyrlang:run_file(FilePath, FileArgs) of
                 {ok, Value, _Env} -> {ok, Value};
                 {error, Reason} -> {error, Reason}

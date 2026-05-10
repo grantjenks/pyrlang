@@ -18,7 +18,9 @@ next(Ref) ->
             ok = pyrlang_heap:set_data(Ref, Data#{index := Index + 1}),
             Value;
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+            )
     end.
 
 -spec values(term()) -> [term()].

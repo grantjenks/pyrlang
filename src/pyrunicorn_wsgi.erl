@@ -2,7 +2,13 @@
 
 -export([environ/5, load_app/1, normalize_response/1, call_app/5, call_app/6]).
 
--spec environ(binary() | string(), binary() | string(), [{binary() | string(), binary() | string()}], binary(), map()) -> map().
+-spec environ(
+    binary() | string(),
+    binary() | string(),
+    [{binary() | string(), binary() | string()}],
+    binary(),
+    map()
+) -> map().
 environ(Method, Target, Headers, Body, Options) ->
     pyrlang_heap:ensure(),
     {Path, Query} = split_target(to_binary(Target)),
@@ -18,7 +24,9 @@ environ(Method, Target, Headers, Body, Options) ->
         <<"PATH_INFO">> => Path,
         <<"QUERY_STRING">> => Query,
         <<"CONTENT_TYPE">> => header_value(<<"content-type">>, Headers, <<"">>),
-        <<"CONTENT_LENGTH">> => header_value(<<"content-length">>, Headers, integer_to_binary(byte_size(Body))),
+        <<"CONTENT_LENGTH">> => header_value(
+            <<"content-length">>, Headers, integer_to_binary(byte_size(Body))
+        ),
         <<"SERVER_NAME">> => ServerName,
         <<"SERVER_PORT">> => ServerPort,
         <<"SERVER_PROTOCOL">> => maps:get(server_protocol, Options, <<"HTTP/1.1">>),
@@ -50,12 +58,25 @@ load_app(Spec) when is_binary(Spec); is_list(Spec) ->
     Module = pyrlang_module:load(ModuleName),
     pyrlang_module:get_attr(Module, CallableName).
 
--spec call_app(term(), binary() | string(), binary() | string(), [{binary() | string(), binary() | string()}], binary()) ->
+-spec call_app(
+    term(),
+    binary() | string(),
+    binary() | string(),
+    [{binary() | string(), binary() | string()}],
+    binary()
+) ->
     {binary(), [{binary(), binary()}], [binary()]}.
 call_app(App0, Method, Target, Headers, Body) ->
     call_app(App0, Method, Target, Headers, Body, #{}).
 
--spec call_app(term(), binary() | string(), binary() | string(), [{binary() | string(), binary() | string()}], binary(), map()) ->
+-spec call_app(
+    term(),
+    binary() | string(),
+    binary() | string(),
+    [{binary() | string(), binary() | string()}],
+    binary(),
+    map()
+) ->
     {binary(), [{binary(), binary()}], [binary()]}.
 call_app(App0, Method, Target, Headers, Body, Options) ->
     App = load_app(App0),
@@ -86,7 +107,9 @@ normalize_response(Body) ->
 
 error_response(_Reason) ->
     trace_error(_Reason),
-    {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [<<"internal server error">>]}.
+    {<<"500 Internal Server Error">>, [{<<"content-type">>, <<"text/plain">>}], [
+        <<"internal server error">>
+    ]}.
 
 error_response(StateKey, Reason) ->
     State = response_state(StateKey),
@@ -200,8 +223,10 @@ normalize_body(Body) ->
     [unicode:characters_to_binary(io_lib:format("~p", [Body]))].
 
 normalize_body_closing(Body) ->
-    try normalize_body(Body)
-    after close_body_if_present(Body)
+    try
+        normalize_body(Body)
+    after
+        close_body_if_present(Body)
     end.
 
 close_body_if_present({py_ref, _} = Ref) ->
@@ -236,9 +261,9 @@ normalize_header([Name, Value]) ->
 headers_to_environ(Headers) ->
     maps:from_list([
         {<<"HTTP_", (header_env_name(Name))/binary>>, to_binary(Value)}
-        || {Name, Value} <- Headers,
-           lower_binary(to_binary(Name)) =/= <<"content-type">>,
-           lower_binary(to_binary(Name)) =/= <<"content-length">>
+     || {Name, Value} <- Headers,
+        lower_binary(to_binary(Name)) =/= <<"content-type">>,
+        lower_binary(to_binary(Name)) =/= <<"content-length">>
     ]).
 
 header_env_name(Name) ->
@@ -247,7 +272,9 @@ header_env_name(Name) ->
 
 header_value(Name, Headers, Default) ->
     LowerName = lower_binary(Name),
-    case [to_binary(Value) || {Key, Value} <- Headers, lower_binary(to_binary(Key)) =:= LowerName] of
+    case
+        [to_binary(Value) || {Key, Value} <- Headers, lower_binary(to_binary(Key)) =:= LowerName]
+    of
         [Value | _] -> Value;
         [] -> Default
     end.
@@ -360,7 +387,9 @@ native_instance(Name, Attrs0) ->
     Attrs = put_new_attr(<<"__pyrlang_unsendable__">>, {native_instance, Name}, Attrs0),
     Class = pyrlang_object:new_class(Name, [], #{}),
     Instance = pyrlang_object:instantiate(Class),
-    maps:foreach(fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs),
+    maps:foreach(
+        fun(Attr, Value) -> ok = pyrlang_object:set_attr(Instance, Attr, Value) end, Attrs
+    ),
     Instance.
 
 put_new_attr(Key, Value, Map) ->

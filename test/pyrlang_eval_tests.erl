@@ -171,8 +171,12 @@ string_concat_test() ->
     ?assertEqual({ok, true}, pyrlang:eval_expr("'%r' % 'Todo' == \"'Todo'\"")),
     ?assertEqual({ok, <<"0007">>}, pyrlang:eval_expr("'%04i' % 7")),
     ?assertEqual({ok, true}, pyrlang:eval_expr("'a\\r\\nb\\n'.splitlines() == ['a', 'b']")),
-    ?assertEqual({ok, true}, pyrlang:eval_expr("'a\\r\\nb\\n'.splitlines(True) == ['a\\r\\n', 'b\\n']")),
-    ?assertEqual({ok, true}, pyrlang:eval_expr("'filter capfirst'.split(None, 1) == ['filter', 'capfirst']")),
+    ?assertEqual(
+        {ok, true}, pyrlang:eval_expr("'a\\r\\nb\\n'.splitlines(True) == ['a\\r\\n', 'b\\n']")
+    ),
+    ?assertEqual(
+        {ok, true}, pyrlang:eval_expr("'filter capfirst'.split(None, 1) == ['filter', 'capfirst']")
+    ),
     ?assertEqual({ok, true}, pyrlang:eval_expr("' a  b  c '.split(None, 1) == ['a', 'b  c ']")).
 
 binary_encode_decode_accept_codec_keywords_test() ->
@@ -656,7 +660,9 @@ if_else_and_while_control_flow_test() ->
         "else:\n"
         "    result = 'bad'\n"
         "result\n",
-    ?assertEqual({ok, <<"ok">>, #{<<"x">> => 3, <<"result">> => <<"ok">>}}, pyrlang:run_string(Source)).
+    ?assertEqual(
+        {ok, <<"ok">>, #{<<"x">> => 3, <<"result">> => <<"ok">>}}, pyrlang:run_string(Source)
+    ).
 
 elif_control_flow_test() ->
     pyrlang_heap:init(),
@@ -2219,7 +2225,11 @@ percent_operator_and_string_formatting_test() ->
         "        return 'label'\n"
         "object_value = '%s' % Label()\n"
         "text + ':' + pair + ':' + zero + ':' + mapped + ':' + ignored_mapping + ':' + ignored_list + ':' + str(left) + ':' + braced + ':' + str('abc'.isascii()) + str(chr(233).isascii()) + ':' + str(len(list_value) > 0) + ':' + str(len(func_value) > 0) + ':' + object_value\n",
-    ?assertMatch({ok, <<".devabc:v:3:n-0:L:5:ff:plain%:plain:2:\\u000a:ok:N:{}:TrueFalse:True:True:label">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok, <<".devabc:v:3:n-0:L:5:ff:plain%:plain:2:\\u000a:ok:N:{}:TrueFalse:True:True:label">>,
+            _Env},
+        pyrlang:run_string(Source)
+    ).
 
 percent_formatting_preserves_unicode_codepoints_test() ->
     pyrlang_heap:init(),
@@ -2283,7 +2293,9 @@ raw_string_literal_test() ->
     ?assertEqual({ok, <<2, 1>>}, pyrlang:eval_expr("b'\\x02\\x01'")),
     ?assertEqual({ok, <<"x\ny\tz">>}, pyrlang:eval_expr("'x\\ny\\tz'")),
     ?assertEqual({ok, <<"\\w">>}, pyrlang:eval_expr("'\\w'")),
-    ?assertEqual({ok, <<"^[ \\t\\f]*(?:[#\\r\\n]|$)">>}, pyrlang:eval_expr("br'^[ \\t\\f]*(?:[#\\r\\n]|$)'")),
+    ?assertEqual(
+        {ok, <<"^[ \\t\\f]*(?:[#\\r\\n]|$)">>}, pyrlang:eval_expr("br'^[ \\t\\f]*(?:[#\\r\\n]|$)'")
+    ),
     ?assertEqual({ok, <<"x\\ny">>}, pyrlang:eval_expr("RB'x\\ny'")),
     ?assertEqual({ok, <<"(?s:name)\\Z">>}, pyrlang:eval_expr("fr'(?s:{\"name\"})\\Z'")),
     ?assertEqual({ok, <<"\\\\">>}, pyrlang:eval_expr("r'\\\\'")),

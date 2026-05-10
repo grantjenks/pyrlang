@@ -26,7 +26,8 @@ mogrify(Sql, Params) ->
     unicode:characters_to_binary(bind_params(to_list(Sql), Params)).
 
 call_connection(Pid, Request) ->
-    try pyrlang_actor:call_monitored(Pid, Request, 30000)
+    try
+        pyrlang_actor:call_monitored(Pid, Request, 30000)
     catch
         error:{actor_down, _Pid, Reason} ->
             {error, {dbapi_operational_error, {connection_down, Reason}}};
@@ -38,7 +39,8 @@ connection_loop(Params) ->
     case pyrlang_actor:recv() of
         {From, Ref, {execute, Sql}} ->
             Reply =
-                try run_sql(Params, Sql)
+                try
+                    run_sql(Params, Sql)
                 catch
                     error:Reason -> {error, Reason}
                 end,
@@ -103,18 +105,22 @@ noop_transaction_sql(Sql) ->
     lists:any(
         fun(Prefix) -> lists:prefix(Prefix, Stripped) end,
         ["savepoint ", "release savepoint ", "rollback to savepoint "]
-    )
-        orelse lists:member(Stripped, ["begin", "commit", "rollback"]).
+    ) orelse
+        lists:member(Stripped, ["begin", "commit", "rollback"]).
 
 psql_args(Params, Sql) ->
     Base = [
         "-X",
-        "-v", "ON_ERROR_STOP=1",
+        "-v",
+        "ON_ERROR_STOP=1",
         "-A",
         "-t",
-        "-F", [31],
-        "-P", "null=" ++ [29],
-        "-d", binary_to_list(maps:get(<<"dbname">>, Params, <<"postgres">>))
+        "-F",
+        [31],
+        "-P",
+        "null=" ++ [29],
+        "-d",
+        binary_to_list(maps:get(<<"dbname">>, Params, <<"postgres">>))
     ],
     WithUser = option_arg(<<"user">>, "-U", Params, Base),
     WithHost = option_arg(<<"host">>, "-h", Params, WithUser),
@@ -151,7 +157,10 @@ collect_port(Port, Acc) ->
     end.
 
 parse_output(Sql, Output) ->
-    Lines = [Line || Line <- binary:split(trim_trailing_newline(Output), <<"\n">>, [global]), Line =/= <<>>],
+    Lines = [
+        Line
+     || Line <- binary:split(trim_trailing_newline(Output), <<"\n">>, [global]), Line =/= <<>>
+    ],
     {RowLines, RowCount} = split_command_tags(Lines),
     ParseBooleans = parse_boolean_cells(Sql),
     Rows = [parse_row(Line, ParseBooleans) || Line <- RowLines],
@@ -285,7 +294,8 @@ join_sql_literals([Item | Rest]) ->
     sql_literal(Item) ++ "," ++ join_sql_literals(Rest).
 
 safe_heap_type({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref)
+    try
+        pyrlang_heap:type(Ref)
     catch
         _:_ -> undefined
     end.
@@ -359,11 +369,14 @@ drop_trailing_semicolons(Rest) ->
 find_psql() ->
     case os:find_executable("psql") of
         false ->
-            case filelib:is_regular("/Applications/Postgres.app/Contents/Versions/latest/bin/psql") of
+            case
+                filelib:is_regular("/Applications/Postgres.app/Contents/Versions/latest/bin/psql")
+            of
                 true -> "/Applications/Postgres.app/Contents/Versions/latest/bin/psql";
                 false -> pyrlang_dbapi:operational_error(psql_not_found)
             end;
-        Path -> Path
+        Path ->
+            Path
     end.
 
 raise_dbapi({dbapi_operational_error, Reason}) ->
@@ -388,6 +401,10 @@ trace_sql(Sql) ->
 
 trace_sql_error(Status, Output) ->
     case os:getenv("PYRLANG_TRACE_POSTGRES") of
-        false -> ok;
-        _ -> io:format(standard_error, "PYRLANG_POSTGRES_ERROR status=~p output=~p~n", [Status, Output])
+        false ->
+            ok;
+        _ ->
+            io:format(standard_error, "PYRLANG_POSTGRES_ERROR status=~p output=~p~n", [
+                Status, Output
+            ])
     end.

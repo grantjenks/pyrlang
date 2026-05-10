@@ -2,19 +2,21 @@
 
 -include("pyrlang.hrl").
 
--compile({no_auto_import, [
-    spawn/1,
-    spawn/2,
-    spawn_link/1,
-    spawn_link/2,
-    self/0,
-    make_ref/0,
-    register/2,
-    whereis/1,
-    link/1,
-    monitor/1,
-    exit/2
-]}).
+-compile(
+    {no_auto_import, [
+        spawn/1,
+        spawn/2,
+        spawn_link/1,
+        spawn_link/2,
+        self/0,
+        make_ref/0,
+        register/2,
+        whereis/1,
+        link/1,
+        monitor/1,
+        exit/2
+    ]}
+).
 
 -export([
     spawn/1,

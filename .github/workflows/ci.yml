@@ -55,6 +55,7 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
+          rebar3-version: "3.27.0"
 
       - name: Export Python module paths
         run: |
@@ -67,6 +68,13 @@ jobs:
           paths = [path for path in dict.fromkeys(paths) if path and os.path.isdir(path)]
           print("PYTHONPATH=" + os.pathsep.join(paths))
           PY
+
+      - name: Install erlfmt
+        run: |
+          git clone --depth 1 --branch v1.8.0 https://github.com/WhatsApp/erlfmt.git /tmp/erlfmt
+          cd /tmp/erlfmt
+          rebar3 as release escriptize
+          echo "/tmp/erlfmt/_build/release/bin" >> "$GITHUB_PATH"
 
       - name: Install test dependencies
         run: |
@@ -83,8 +91,13 @@ jobs:
           print(sys.version)
           print("stdlib", sysconfig.get_path("stdlib"))
           PY
+          rebar3 version
+          erlfmt --version
           sqlite3 --version
           psql --version
+
+      - name: Check formatting
+        run: make format-check
 
       - name: Run tests
         run: make test

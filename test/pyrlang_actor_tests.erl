@@ -35,7 +35,9 @@ monitor_down_test() ->
     pyrlang_heap:init(),
     Pid = pyrlang_actor:spawn(fun() -> ok end),
     Ref = pyrlang_actor:monitor(Pid),
-    Msg = pyrlang_actor:recv_match({'DOWN', Ref, pyrlang_pattern:any(), pyrlang_pattern:any()}, 1000, timeout),
+    Msg = pyrlang_actor:recv_match(
+        {'DOWN', Ref, pyrlang_pattern:any(), pyrlang_pattern:any()}, 1000, timeout
+    ),
     ?assertMatch({'DOWN', Ref, Pid, _Reason}, Msg).
 
 link_trap_exit_test() ->
@@ -43,7 +45,9 @@ link_trap_exit_test() ->
     pyrlang_actor:trap_exit(true),
     Pid = pyrlang_actor:spawn_link(fun() -> timer:sleep(infinity) end),
     pyrlang_actor:exit(Pid, killed),
-    ?assertEqual({'EXIT', Pid, killed}, pyrlang_actor:recv_match({'EXIT', Pid, killed}, 1000, timeout)),
+    ?assertEqual(
+        {'EXIT', Pid, killed}, pyrlang_actor:recv_match({'EXIT', Pid, killed}, 1000, timeout)
+    ),
     pyrlang_actor:trap_exit(false).
 
 server() ->

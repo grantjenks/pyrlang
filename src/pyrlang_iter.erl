@@ -5,18 +5,26 @@
 -spec iter(term()) -> term().
 iter({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
-        generator -> Ref;
-        iterator -> Ref;
-        list -> iterator_from_values(pyrlang_heap:list_items(Ref));
-        dict -> iterator_from_values([Key || {Key, _Value} <- pyrlang_heap:dict_items(Ref)]);
-        set -> iterator_from_values(pyrlang_heap:set_items(Ref));
+        generator ->
+            Ref;
+        iterator ->
+            Ref;
+        list ->
+            iterator_from_values(pyrlang_heap:list_items(Ref));
+        dict ->
+            iterator_from_values([Key || {Key, _Value} <- pyrlang_heap:dict_items(Ref)]);
+        set ->
+            iterator_from_values(pyrlang_heap:set_items(Ref));
         instance ->
             case tuple_subclass_items(Ref) of
-                {ok, Items} -> iterator_from_values(Items);
+                {ok, Items} ->
+                    iterator_from_values(Items);
                 error ->
                     case string_subclass_value(Ref) of
-                        {ok, Value} -> iterator_from_values([<<Char/utf8>> || <<Char/utf8>> <= Value]);
-                        error -> object_iterator(Ref)
+                        {ok, Value} ->
+                            iterator_from_values([<<Char/utf8>> || <<Char/utf8>> <= Value]);
+                        error ->
+                            object_iterator(Ref)
                     end
             end;
         _Type ->
@@ -54,14 +62,20 @@ next(Other) ->
 -spec values(term()) -> [term()].
 values({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
-        list -> pyrlang_heap:list_items(Ref);
-        dict -> [Key || {Key, _Value} <- pyrlang_heap:dict_items(Ref)];
-        set -> pyrlang_heap:set_items(Ref);
-        generator -> pyrlang_generator:values(Ref);
-        iterator -> collect_iterator(Ref, []);
+        list ->
+            pyrlang_heap:list_items(Ref);
+        dict ->
+            [Key || {Key, _Value} <- pyrlang_heap:dict_items(Ref)];
+        set ->
+            pyrlang_heap:set_items(Ref);
+        generator ->
+            pyrlang_generator:values(Ref);
+        iterator ->
+            collect_iterator(Ref, []);
         instance ->
             case tuple_subclass_items(Ref) of
-                {ok, Items} -> Items;
+                {ok, Items} ->
+                    Items;
                 error ->
                     case string_subclass_value(Ref) of
                         {ok, Value} -> [<<Char/utf8>> || <<Char/utf8>> <= Value];
@@ -105,7 +119,8 @@ object_iterator_attr(Ref) ->
 
 sequence_iterator_or_ref(Ref) ->
     try pyrlang_object:get_attr(Ref, <<"__getitem__">>) of
-        GetItem -> pyrlang_heap:allocate(iterator, #{kind => sequence, getitem => GetItem, index => 0})
+        GetItem ->
+            pyrlang_heap:allocate(iterator, #{kind => sequence, getitem => GetItem, index => 0})
     catch
         error:{attribute_error, _Name} -> Ref
     end.
@@ -133,7 +148,9 @@ range_iterator(Start, Stop, Step) ->
     pyrlang_heap:allocate(iterator, #{kind => range, current => Start, stop => Stop, step => Step}).
 
 callable_sentinel(Callable, Sentinel) ->
-    pyrlang_heap:allocate(iterator, #{kind => callable_sentinel, callable => Callable, sentinel => Sentinel}).
+    pyrlang_heap:allocate(iterator, #{
+        kind => callable_sentinel, callable => Callable, sentinel => Sentinel
+    }).
 
 next_iterator(Ref) ->
     Data = pyrlang_heap:data(Ref),
@@ -153,7 +170,9 @@ next_iterator(Ref) ->
                     ok = pyrlang_heap:set_data(Ref, Data#{index := Index + 1}),
                     Value;
                 false ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)))
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+                    )
             end
     end.
 
@@ -161,7 +180,9 @@ next_callable_sentinel_iterator(Data) ->
     Value = pyrlang_eval:call(maps:get(callable, Data), []),
     case same_value(Value, maps:get(sentinel, Data)) of
         true ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+            );
         false ->
             Value
     end.
@@ -177,7 +198,9 @@ next_sequence_iterator(Ref, Data) ->
         throw:{py_exception, Exception} ->
             case pyrlang_exception:exception_type(Exception) of
                 <<"IndexError">> ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)));
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+                    );
                 _ ->
                     pyrlang_exception:raise(Exception)
             end
@@ -197,7 +220,9 @@ next_range_iterator(Ref, Data) ->
             ok = pyrlang_heap:set_data(Ref, Data#{current := Current + Step}),
             Current;
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>)))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"StopIteration">>))
+            )
     end.
 
 range_values(Current, Stop, Step, Acc) ->
@@ -269,7 +294,9 @@ trace_not_iterable(Other) ->
 
 raise_not_iterable(Other) ->
     Message = <<"object is not iterable: ", (describe_value(Other))/binary>>,
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), Message)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), Message)
+    ).
 
 describe_value({py_ref, _} = Ref) ->
     try

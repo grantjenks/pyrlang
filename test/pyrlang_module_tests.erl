@@ -6,7 +6,9 @@ import_module_and_call_function_test() ->
     pyrlang_heap:init(),
     Dir = temp_dir(),
     ok = file:make_dir(Dir),
-    ok = file:write_file(filename:join(Dir, "mathy.pyr"), <<"value = 41\ndef inc(x):\n    return x + 1\n">>),
+    ok = file:write_file(
+        filename:join(Dir, "mathy.pyr"), <<"value = 41\ndef inc(x):\n    return x + 1\n">>
+    ),
     ok = pyrlang:set_path([Dir | pyrlang_module:path()]),
     ?assertMatch({ok, 42, _Env}, pyrlang:run_string("import mathy\nmathy.inc(mathy.value)\n")),
     cleanup_dir(Dir).
@@ -15,7 +17,9 @@ import_py_source_module_test() ->
     pyrlang_heap:init(),
     Dir = temp_dir(),
     ok = file:make_dir(Dir),
-    ok = file:write_file(filename:join(Dir, "mathy.py"), <<"value = 41\ndef inc(x):\n    return x + 1\n">>),
+    ok = file:write_file(
+        filename:join(Dir, "mathy.py"), <<"value = 41\ndef inc(x):\n    return x + 1\n">>
+    ),
     ok = pyrlang:set_path([Dir | pyrlang_module:path()]),
     ?assertMatch({ok, 42, _Env}, pyrlang:run_string("import mathy\nmathy.inc(mathy.value)\n")),
     cleanup_dir(Dir).
@@ -26,9 +30,14 @@ builtins_import_uses_pyrlang_runtime_module_test() ->
     ok = file:make_dir(Dir),
     ShadowDir = filename:join(Dir, "builtins"),
     ok = file:make_dir(ShadowDir),
-    ok = file:write_file(filename:join(ShadowDir, "__init__.py"), <<"raise ImportError('shadowed')\n">>),
+    ok = file:write_file(
+        filename:join(ShadowDir, "__init__.py"), <<"raise ImportError('shadowed')\n">>
+    ),
     ok = pyrlang:set_path([Dir]),
-    ?assertMatch({ok, 5, _Env}, pyrlang:run_string("import builtins\nbuiltins.len([1, 2, 3]) + builtins.int('2')\n")),
+    ?assertMatch(
+        {ok, 5, _Env},
+        pyrlang:run_string("import builtins\nbuiltins.len([1, 2, 3]) + builtins.int('2')\n")
+    ),
     cleanup_dir(ShadowDir),
     file:del_dir(Dir).
 
@@ -38,7 +47,9 @@ from_import_alias_test() ->
     ok = file:make_dir(Dir),
     ok = file:write_file(filename:join(Dir, "settings.pyr"), <<"answer = 42\n">>),
     ok = pyrlang:set_path([Dir]),
-    ?assertMatch({ok, 42, _Env}, pyrlang:run_string("from settings import answer as value\nvalue\n")),
+    ?assertMatch(
+        {ok, 42, _Env}, pyrlang:run_string("from settings import answer as value\nvalue\n")
+    ),
     cleanup_dir(Dir).
 
 importlib_util_find_spec_finds_package_submodules_test() ->
@@ -122,7 +133,9 @@ package_init_and_dotted_import_test() ->
     ok = file:write_file(filename:join(PackageDir, "__init__.pyr"), <<"name = 'pkg'\n">>),
     ok = file:write_file(filename:join(PackageDir, "mod.pyr"), <<"value = 7\n">>),
     ok = pyrlang:set_path([Dir]),
-    ?assertMatch({ok, 10, _Env}, pyrlang:run_string("import pkg.mod\npkg.mod.value + len(pkg.name)\n")),
+    ?assertMatch(
+        {ok, 10, _Env}, pyrlang:run_string("import pkg.mod\npkg.mod.value + len(pkg.name)\n")
+    ),
     cleanup_dir(PackageDir),
     file:del_dir(Dir).
 
@@ -135,7 +148,9 @@ py_package_init_and_dotted_import_test() ->
     ok = file:write_file(filename:join(PackageDir, "__init__.py"), <<"name = 'pkg'\n">>),
     ok = file:write_file(filename:join(PackageDir, "mod.py"), <<"value = 7\n">>),
     ok = pyrlang:set_path([Dir]),
-    ?assertMatch({ok, 10, _Env}, pyrlang:run_string("import pkg.mod\npkg.mod.value + len(pkg.name)\n")),
+    ?assertMatch(
+        {ok, 10, _Env}, pyrlang:run_string("import pkg.mod\npkg.mod.value + len(pkg.name)\n")
+    ),
     cleanup_dir(PackageDir),
     file:del_dir(Dir).
 
@@ -161,7 +176,9 @@ direct_child_import_loads_parent_package_first_test() ->
     PackageDir = filename:join(Dir, "pkg"),
     ok = file:make_dir(PackageDir),
     ok = file:write_file(filename:join(PackageDir, "__init__.py"), <<"ready = 40\n">>),
-    ok = file:write_file(filename:join(PackageDir, "child.py"), <<"from . import ready\nvalue = ready + 2\n">>),
+    ok = file:write_file(
+        filename:join(PackageDir, "child.py"), <<"from . import ready\nvalue = ready + 2\n">>
+    ),
     ok = pyrlang:set_path([Dir]),
     ?assertMatch({ok, 42, _Env}, pyrlang:run_string("import pkg.child\npkg.child.value\n")),
     cleanup_dir(PackageDir),
@@ -177,7 +194,9 @@ relative_star_import_uses_all_and_binds_child_module_test() ->
         "from .child import *\n"
         "answer = value + (child.__all__[0] == 'value') + ('hidden' in globals())\n"
     >>),
-    ok = file:write_file(filename:join(PackageDir, "child.py"), <<"__all__ = ('value',)\nvalue = 41\nhidden = 99\n">>),
+    ok = file:write_file(
+        filename:join(PackageDir, "child.py"), <<"__all__ = ('value',)\nvalue = 41\nhidden = 99\n">>
+    ),
     ok = pyrlang:set_path([Dir]),
     ?assertMatch({ok, 42, _Env}, pyrlang:run_string("import pkg\npkg.answer\n")),
     cleanup_dir(PackageDir),
@@ -219,7 +238,9 @@ child_module_attaches_to_parent_package_while_parent_is_loading_test() ->
     ok = file:make_dir(Dir),
     PackageDir = filename:join(Dir, "pkg"),
     ok = file:make_dir(PackageDir),
-    ok = file:write_file(filename:join(PackageDir, "__init__.py"), <<"from pkg import child\nvalue = child.value\n">>),
+    ok = file:write_file(
+        filename:join(PackageDir, "__init__.py"), <<"from pkg import child\nvalue = child.value\n">>
+    ),
     ok = file:write_file(filename:join(PackageDir, "child.py"), <<"value = 42\n">>),
     ok = pyrlang:set_path([Dir]),
     ?assertMatch({ok, 42, _Env}, pyrlang:run_string("import pkg\npkg.child.value\n")),
@@ -237,9 +258,13 @@ child_module_sees_parent_names_bound_before_reentrant_import_test() ->
         "import pkg.child\n"
     >>),
     ok = file:write_file(filename:join(PackageDir, "messages.py"), <<"class Error:\n    pass\n">>),
-    ok = file:write_file(filename:join(PackageDir, "child.py"), <<"from . import Error\nvalue = Error\n">>),
+    ok = file:write_file(
+        filename:join(PackageDir, "child.py"), <<"from . import Error\nvalue = Error\n">>
+    ),
     ok = pyrlang:set_path([Dir]),
-    ?assertMatch({ok, true, _Env}, pyrlang:run_string("import pkg\npkg.child.value is pkg.Error\n")),
+    ?assertMatch(
+        {ok, true, _Env}, pyrlang:run_string("import pkg\npkg.child.value is pkg.Error\n")
+    ),
     cleanup_dir(PackageDir),
     file:del_dir(Dir).
 
@@ -281,13 +306,21 @@ builtin_sys_metadata_supports_python_version_guards_test() ->
         "except SystemExit as exc:\n"
         "    exited = exc.args[0]\n"
         "sys.implementation.name + ':' + current + ':' + future + ':' + sys.base_prefix + ':' + frame.f_globals.get('__name__') + ':' + sys._getframemodulename(1) + ':' + sys.modules['collections.abc'] + ':' + sys.byteorder + ':' + sys.platform + ':' + str(sys.maxsize > 0) + ':' + str(sys.float_info.max_10_exp) + ':' + sys.intern('name') + ':' + str(before) + ':' + str(sys.getrecursionlimit()) + ':' + sys.stderr.name + ':' + str(sys.stderr.write('')) + ':' + str(sys.stderr.isatty()) + ':' + sys.platlibdir + ':' + sys.abiflags + ':' + str(sys._framework) + ':' + sys._base_executable + ':' + sys.getfilesystemencoding() + ':' + sys.getfilesystemencodeerrors() + ':' + str(len(sys.path) > 0) + ':' + str(len(sys.meta_path)) + ':' + str(len(sys.path_hooks)) + ':' + str(len(sys.path_importer_cache)) + ':' + str(exited)\n",
-    ?assertMatch({ok, <<"pyrlang:yes:no:/usr/local:__main__:__main__:abc:little:darwin:True:308:name:1000:1500:stderr:0:False:lib::False:pyrlang:utf-8:surrogateescape:True:0:0:0:7">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok,
+            <<"pyrlang:yes:no:/usr/local:__main__:__main__:abc:little:darwin:True:308:name:1000:1500:stderr:0:False:lib::False:pyrlang:utf-8:surrogateescape:True:0:0:0:7">>,
+            _Env},
+        pyrlang:run_string(Source)
+    ).
 
 sys_modules_tracks_modules_while_they_are_loading_test() ->
     pyrlang_heap:init(),
     Dir = temp_dir(),
     ok = file:make_dir(Dir),
-    ok = file:write_file(filename:join(Dir, "selfmod.py"), <<"import sys\nseen = sys.modules[__name__] is sys.modules['selfmod']\n">>),
+    ok = file:write_file(
+        filename:join(Dir, "selfmod.py"),
+        <<"import sys\nseen = sys.modules[__name__] is sys.modules['selfmod']\n">>
+    ),
     ok = pyrlang:set_path([Dir]),
     Source =
         "import selfmod\n"
@@ -306,15 +339,17 @@ builtin_pkgutil_iter_modules_scans_py_modules_and_packages_test() ->
     ok = file:write_file(filename:join(PackageDir, "inner.py"), <<"">>),
     ok = file:write_file(filename:join(Dir, "tool.py"), <<"">>),
     ok = file:write_file(filename:join(Dir, "_private.py"), <<"">>),
-    Source = lists:flatten(io_lib:format(
-        "import pkgutil\n"
-        "items = list(pkgutil.iter_modules(['~s']))\n"
-        "walk = list(pkgutil.walk_packages(['~s']))\n"
-        "names = [name for _, name, is_pkg in items if not name.startswith('_')]\n"
-        "walk_names = [name for _, name, is_pkg in walk if not name.startswith('_')]\n"
-        "len(names) + ('tool' in names) + ('pkg' in names) + ('pkg.inner' in walk_names)\n",
-        [Dir, Dir]
-    )),
+    Source = lists:flatten(
+        io_lib:format(
+            "import pkgutil\n"
+            "items = list(pkgutil.iter_modules(['~s']))\n"
+            "walk = list(pkgutil.walk_packages(['~s']))\n"
+            "names = [name for _, name, is_pkg in items if not name.startswith('_')]\n"
+            "walk_names = [name for _, name, is_pkg in walk if not name.startswith('_')]\n"
+            "len(names) + ('tool' in names) + ('pkg' in names) + ('pkg.inner' in walk_names)\n",
+            [Dir, Dir]
+        )
+    ),
     ?assertMatch({ok, 5, _Env}, pyrlang:run_string(Source)),
     ok = file:delete(filename:join(PackageDir, "inner.py")),
     cleanup_dir(PackageDir),
@@ -409,7 +444,9 @@ operator_itemgetter_reads_tuple_subclass_items_test() ->
         "row = Row('django_migrations', 'table')\n"
         "pick = itemgetter(0)\n"
         "pick(row) + ':' + row[1] + ':' + row.name\n",
-    ?assertMatch({ok, <<"django_migrations:table:django_migrations">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok, <<"django_migrations:table:django_migrations">>, _Env}, pyrlang:run_string(Source)
+    ).
 
 operator_getitem_missing_method_is_catchable_typeerror_test() ->
     pyrlang_heap:init(),
@@ -648,8 +685,12 @@ os_filesystem_mutation_helpers_use_beam_file_ops_test() ->
     Nested = filename:join([Dir, "a", "b"]),
     Source = iolist_to_binary([
         "import os\n",
-        "base = '", Dir, "'\n",
-        "nested = '", Nested, "'\n",
+        "base = '",
+        Dir,
+        "'\n",
+        "nested = '",
+        Nested,
+        "'\n",
         "os.makedirs(nested, exist_ok=True)\n",
         "made = os.path.isdir(nested)\n",
         "os.rmdir(nested)\n",
@@ -716,7 +757,9 @@ builtin_re_module_provides_basic_matching_test() ->
         "defaults = ''.join(re.match(r'(a)?(b)', 'b').groups(default='-'))\n"
         "named = re.match(r'(?P<word>a)?b', 'b').groupdict(default='-')['word']\n"
         "m.group(0) + m.group(1) + p.search('hi').group() + ':' + str(m.start()) + str(m.end()) + str(m.span()[1]) + ':' + decoded + ':' + re.sub('i', 'o', 'hii', 1) + ':' + parts[0] + parts[1] + parts[2] + ':' + ''.join(found) + ':' + module_found + ':' + module_split + ':' + defaults + named + ':' + str(ws.match('x  y', 1).end())\n",
-    ?assertMatch({ok, <<"hiii:022:a b=:hoi:a b c:ab:<>:ab:-b-:3">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok, <<"hiii:022:a b=:hoi:a b c:ab:<>:ab:-b-:3">>, _Env}, pyrlang:run_string(Source)
+    ).
 
 builtin_re_finditer_named_groups_verbose_and_escape_test() ->
     pyrlang_heap:init(),
@@ -738,7 +781,9 @@ builtin_re_finditer_named_groups_verbose_and_escape_test() ->
         "nested = copy.deepcopy({'patterns': [p]})\n"
         "multi = flagged.group('num', 0)\n"
         "escaped + ':' + m['word'] + ':' + m.group('word') + ':' + flagged.group('num') + ':' + multi[0] + ':' + multi[1] + ':' + '|'.join(seen) + ':' + str(box_copy.pattern is p) + ':' + str(nested['patterns'][0] is p)\n",
-    ?assertMatch({ok, <<"\\|:ab:ab:12:12:12:ab2|cd8:True:True">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok, <<"\\|:ab:ab:12:12:12:ab2|cd8:True:True">>, _Env}, pyrlang:run_string(Source)
+    ).
 
 gc_builtin_module_exposes_noop_runtime_hooks_test() ->
     pyrlang_heap:init(),
@@ -1073,10 +1118,11 @@ gzip_builtin_reads_text_and_compresses_bytes_test() ->
     ok = file:write_file(Path, zlib:gzip(<<"alpha\nbeta\n">>)),
     Source =
         "import gzip\n"
-        "with gzip.open('" ++ Path ++ "', 'rt', encoding='utf-8') as f:\n"
-        "    values = [x.strip() for x in f]\n"
-        "data = gzip.decompress(gzip.compress(b'abc'))\n"
-        "values[0] + values[1] + data.decode()\n",
+        "with gzip.open('" ++ Path ++
+            "', 'rt', encoding='utf-8') as f:\n"
+            "    values = [x.strip() for x in f]\n"
+            "data = gzip.decompress(gzip.compress(b'abc'))\n"
+            "values[0] + values[1] + data.decode()\n",
     ?assertMatch({ok, <<"alphabetaabc">>, _Env}, pyrlang:run_string(Source)),
     cleanup_dir(Dir).
 
@@ -1336,7 +1382,9 @@ sqlite3_fetch_rows_are_tuples_test() ->
     DbPath = filename:join(Dir, "rows.sqlite3"),
     Source = iolist_to_binary([
         "import sqlite3\n",
-        "conn = sqlite3.connect('", DbPath, "')\n",
+        "conn = sqlite3.connect('",
+        DbPath,
+        "')\n",
         "cur = conn.cursor()\n",
         "cur.execute('create table items (name text, count integer)')\n",
         "cur.execute('insert into items values (?, ?)', ('task', 3))\n",
@@ -1353,23 +1401,41 @@ psycopg2_builtin_module_runs_basic_dbapi_queries_test() ->
             ok;
         _Psql ->
             pyrlang_heap:init(),
-            Table = lists:flatten(io_lib:format("pyrlang_pg_~p_~p", [erlang:unique_integer([positive]), erlang:system_time(millisecond)])),
+            Table = lists:flatten(
+                io_lib:format("pyrlang_pg_~p_~p", [
+                    erlang:unique_integer([positive]), erlang:system_time(millisecond)
+                ])
+            ),
             Source = iolist_to_binary([
                 "import psycopg2\n",
                 "from psycopg2 import extensions\n",
                 "conn = psycopg2.connect(dbname='postgres')\n",
                 "cur = conn.cursor()\n",
-                "cur.execute('drop table if exists ", Table, "')\n",
-                "cur.execute('create table ", Table, "(id integer generated by default as identity primary key, title text, done boolean)')\n",
-                "row = cur.execute('insert into ", Table, "(title, done) values (%s, %s) returning id', ['write pg', False]).fetchone()\n",
-                "updated = cur.execute('update ", Table, " set done = %s where id = %s', [True, row[0]]).rowcount\n",
-                "rows = cur.execute('select id, title, done from ", Table, " where id = %s', [row[0]]).fetchall()\n",
+                "cur.execute('drop table if exists ",
+                Table,
+                "')\n",
+                "cur.execute('create table ",
+                Table,
+                "(id integer generated by default as identity primary key, title text, done boolean)')\n",
+                "row = cur.execute('insert into ",
+                Table,
+                "(title, done) values (%s, %s) returning id', ['write pg', False]).fetchone()\n",
+                "updated = cur.execute('update ",
+                Table,
+                " set done = %s where id = %s', [True, row[0]]).rowcount\n",
+                "rows = cur.execute('select id, title, done from ",
+                Table,
+                " where id = %s', [row[0]]).fetchall()\n",
                 "quoted = extensions.adapt(\"O'Reilly\").getquoted().decode()\n",
-                "cur.execute('drop table ", Table, "')\n",
+                "cur.execute('drop table ",
+                Table,
+                "')\n",
                 "conn.close()\n",
                 "str(row[0]) + ':' + rows[0][1] + ':' + str(rows[0][2]) + ':' + str(updated) + ':' + quoted\n"
             ]),
-            ?assertMatch({ok, <<"1:write pg:True:1:'O''Reilly'">>, _Env}, pyrlang:run_string(Source))
+            ?assertMatch(
+                {ok, <<"1:write pg:True:1:'O''Reilly'">>, _Env}, pyrlang:run_string(Source)
+            )
     end.
 
 builtin_pathlib_module_uses_beam_file_io_test() ->
@@ -1380,11 +1446,19 @@ builtin_pathlib_module_uses_beam_file_io_test() ->
     Source = iolist_to_binary([
         "import os\n"
         "from pathlib import Path, PurePath, PosixPath\n",
-        "__file__ = '", Dir, "/pkg/module.py'\n",
-        "base = Path('", Dir, "')\n",
+        "__file__ = '",
+        Dir,
+        "/pkg/module.py'\n",
+        "base = Path('",
+        Dir,
+        "')\n",
         "path = base / 'note.txt'\n",
-        "pure = PurePath('", Dir, "')\n",
-        "combo = Path('", Dir, "', 'nested')\n",
+        "pure = PurePath('",
+        Dir,
+        "')\n",
+        "combo = Path('",
+        Dir,
+        "', 'nested')\n",
         "written = path.write_text('hello')\n",
         "root = Path(__file__).resolve().parent.parent\n",
         "written + len(path.read_text()) + path.exists() + base.is_dir() + path.is_file() + (not path.is_dir()) + str(root).startswith('/') + (path.__fspath__().endswith('note.txt')) + isinstance(path, PurePath) + isinstance(path, Path) + isinstance(path, os.PathLike) + isinstance(pure, PurePath) + isinstance(pure, Path) + (PosixPath is Path) + str(combo).endswith('/nested')\n"
@@ -1401,17 +1475,27 @@ builtin_open_uses_beam_file_io_and_is_actor_local_resource_test() ->
     Path = filename:join(Dir, "note.txt"),
     Source = iolist_to_binary([
         "from erlang import self, send\n",
-        "with open('", Path, "', 'w') as f:\n",
+        "with open('",
+        Path,
+        "', 'w') as f:\n",
         "    written = f.write('hello')\n",
-        "with open('", Path, "') as f:\n",
+        "with open('",
+        Path,
+        "') as f:\n",
         "    data = f.read()\n",
-        "with open('", Path, "', 'rb') as f:\n",
+        "with open('",
+        Path,
+        "', 'rb') as f:\n",
         "    f.seek(2)\n",
         "    pos = f.tell()\n",
         "    tail = f.read()\n",
-        "with open('", Path, "', encoding='utf-8') as f:\n",
+        "with open('",
+        Path,
+        "', encoding='utf-8') as f:\n",
         "    data_kw = f.read()\n",
-        "f = open('", Path, "')\n",
+        "f = open('",
+        Path,
+        "')\n",
         "try:\n",
         "    send(self(), f)\n",
         "    marker = 'sent'\n",
@@ -1419,13 +1503,17 @@ builtin_open_uses_beam_file_io_and_is_actor_local_resource_test() ->
         "    marker = 'unsendable'\n",
         "f.close()\n",
         "try:\n"
-        "    open('", filename:join(Dir, "missing.txt"), "')\n"
+        "    open('",
+        filename:join(Dir, "missing.txt"),
+        "')\n"
         "    missing = 'opened'\n"
         "except FileNotFoundError:\n"
         "    missing = 'missing'\n"
         "str(written) + ':' + data + ':' + data_kw + ':' + str(pos) + ':' + tail.decode() + ':' + marker + ':' + missing\n"
     ]),
-    ?assertMatch({ok, <<"5:hello:hello:2:llo:unsendable:missing">>, _Env}, pyrlang:run_string(Source)),
+    ?assertMatch(
+        {ok, <<"5:hello:hello:2:llo:unsendable:missing">>, _Env}, pyrlang:run_string(Source)
+    ),
     cleanup_dir(Dir).
 
 builtin_io_module_loads_stdlib_io_test() ->
@@ -1630,7 +1718,9 @@ http_simplecookie_supports_item_assignment_and_morsel_attrs_test() ->
         "cookie['csrftoken']['path'] = '/'\n"
         "cookie['csrftoken']['samesite'] = 'Lax'\n"
         "cookie.get('csrftoken') + '|' + cookie['csrftoken'].output(header='')\n",
-    ?assertMatch({ok, <<"abc|csrftoken=abc; Path=/; SameSite=Lax">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok, <<"abc|csrftoken=abc; Path=/; SameSite=Lax">>, _Env}, pyrlang:run_string(Source)
+    ).
 
 builtin_urllib_parse_module_handles_web_url_helpers_test() ->
     pyrlang_heap:init(),
@@ -1650,7 +1740,12 @@ builtin_urllib_parse_module_handles_web_url_helpers_test() ->
         "defrag = urllib.parse.urldefrag('/static/app.css#v1')\n"
         "defrag_url, defrag_fragment = defrag\n"
         "encoded + '|' + plus + '|' + seq + '|' + parsed['q'][0] + parsed['q'][1] + pairs[0][1] + pairs[1][1] + '|' + split.scheme + split.netloc + split.path + split.query + split.fragment + '|' + parse[1] + port[1] + '|' + rebuilt + '|' + rebuilt_split + '|' + static_url + '|' + defrag_url + ':' + defrag_fragment + ':' + defrag.fragment\n",
-    ?assertMatch({ok, <<"/a%20b|q=a+b|tag=a+b&tag=c|a bca b|httpsexample.com/ax=1top|example.com443|https://example.com/a?x=1#top|https://example.com/a?x=1#top|/static/admin/css/base.css|/static/app.css:v1:v1">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok,
+            <<"/a%20b|q=a+b|tag=a+b&tag=c|a bca b|httpsexample.com/ax=1top|example.com443|https://example.com/a?x=1#top|https://example.com/a?x=1#top|/static/admin/css/base.css|/static/app.css:v1:v1">>,
+            _Env},
+        pyrlang:run_string(Source)
+    ).
 
 builtin_email_utils_module_formats_dates_test() ->
     pyrlang_heap:init(),
@@ -1658,7 +1753,12 @@ builtin_email_utils_module_formats_dates_test() ->
         "from datetime import datetime\n"
         "from email.utils import formatdate, format_datetime, _has_surrogates\n"
         "formatdate(0) + ':' + formatdate(0, usegmt=True) + ':' + format_datetime(datetime(1970, 1, 1), usegmt=True) + ':' + str(_has_surrogates('plain'))\n",
-    ?assertMatch({ok, <<"Thu, 01 Jan 1970 00:00:00 GMT:Thu, 01 Jan 1970 00:00:00 GMT:Thu, 01 Jan 1970 00:00:00 GMT:False">>, _Env}, pyrlang:run_string(Source)).
+    ?assertMatch(
+        {ok,
+            <<"Thu, 01 Jan 1970 00:00:00 GMT:Thu, 01 Jan 1970 00:00:00 GMT:Thu, 01 Jan 1970 00:00:00 GMT:False">>,
+            _Env},
+        pyrlang:run_string(Source)
+    ).
 
 module_cache_is_actor_local_test() ->
     pyrlang_heap:init(),
@@ -1828,7 +1928,11 @@ uncaught_exception_returns_error_test() ->
 temp_dir() ->
     filename:join(
         "/tmp",
-        lists:flatten(io_lib:format("pyrlang_module_~p_~p", [erlang:unique_integer([positive]), erlang:system_time(millisecond)]))
+        lists:flatten(
+            io_lib:format("pyrlang_module_~p_~p", [
+                erlang:unique_integer([positive]), erlang:system_time(millisecond)
+            ])
+        )
     ).
 
 cleanup_dir(Dir) ->

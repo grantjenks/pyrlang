@@ -13,7 +13,8 @@ main(Args) ->
             halt(1)
     end.
 
--spec start_from_args([string() | binary()]) -> {ok, pid(), inet:port_number(), map()} | {error, term()}.
+-spec start_from_args([string() | binary()]) ->
+    {ok, pid(), inet:port_number(), map()} | {error, term()}.
 start_from_args(Args) ->
     case parse_args(Args) of
         {ok, #{app := App, path := ExtraPath, options := Options} = Config} ->
@@ -51,7 +52,11 @@ parse_args(["--bind", Bind | Rest], Config, App) ->
 parse_args(["--workers", Count | Rest], Config, App) ->
     parse_worker_count(Count, Rest, Config, App);
 parse_args(["--django-settings-module", Module | Rest], Config, App) ->
-    parse_args(Rest, put_env(<<"DJANGO_SETTINGS_MODULE">>, unicode:characters_to_binary(Module), Config), App);
+    parse_args(
+        Rest,
+        put_env(<<"DJANGO_SETTINGS_MODULE">>, unicode:characters_to_binary(Module), Config),
+        App
+    );
 parse_args(["-I", Path | Rest], Config, App) ->
     parse_args(Rest, add_path(Path, Config), App);
 parse_args(["--path", Path | Rest], Config, App) ->
@@ -95,7 +100,8 @@ parse_non_bind_long_option(Arg, Config) ->
 parse_path_or_env_option(Arg, Config) ->
     case split_option(Arg, "--django-settings-module=") of
         {ok, Module} ->
-            {ok, put_env(<<"DJANGO_SETTINGS_MODULE">>, unicode:characters_to_binary(Module), Config)};
+            {ok,
+                put_env(<<"DJANGO_SETTINGS_MODULE">>, unicode:characters_to_binary(Module), Config)};
         error ->
             case split_option(Arg, "--path=") of
                 {ok, Path} -> {ok, add_path(Path, Config)};

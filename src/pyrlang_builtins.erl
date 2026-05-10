@@ -112,7 +112,9 @@ env() ->
         <<"any">> => {py_native_varargs, fun builtin_any/1},
         <<"bool">> => builtin_type_class(<<"bool">>, {py_native_varargs, fun builtin_bool/1}),
         <<"bytes">> => builtin_type_class(<<"bytes">>, {py_native_varargs, fun builtin_bytes/1}),
-        <<"bytearray">> => builtin_type_class(<<"bytearray">>, {py_native_varargs, fun builtin_bytes/1}),
+        <<"bytearray">> => builtin_type_class(
+            <<"bytearray">>, {py_native_varargs, fun builtin_bytes/1}
+        ),
         <<"callable">> => fun builtin_callable/1,
         <<"chr">> => fun builtin_chr/1,
         <<"delattr">> => fun builtin_delattr/2,
@@ -123,7 +125,9 @@ env() ->
         <<"filter">> => {py_native_varargs, fun builtin_filter/1},
         <<"float">> => builtin_type_class(<<"float">>, {py_native_varargs, fun builtin_float/1}),
         <<"format">> => {py_native_varargs, fun builtin_format/1},
-        <<"frozenset">> => builtin_type_class(<<"frozenset">>, {py_native_varargs, fun builtin_set/1}),
+        <<"frozenset">> => builtin_type_class(
+            <<"frozenset">>, {py_native_varargs, fun builtin_set/1}
+        ),
         <<"getattr">> => {py_native_varargs, fun builtin_getattr/1},
         <<"hasattr">> => fun builtin_hasattr/2,
         <<"hash">> => fun builtin_hash/1,
@@ -137,13 +141,17 @@ env() ->
         <<"list">> => builtin_type_class(<<"list">>, {py_native_varargs, fun builtin_list/1}),
         <<"map">> => {py_native_varargs, fun builtin_map/1},
         <<"max">> => {py_native_call, fun builtin_max/2},
-        <<"memoryview">> => builtin_type_class(<<"memoryview">>, {py_native_varargs, fun builtin_object/1}),
+        <<"memoryview">> => builtin_type_class(
+            <<"memoryview">>, {py_native_varargs, fun builtin_object/1}
+        ),
         <<"min">> => {py_native_call, fun builtin_min/2},
         <<"next">> => {py_native_varargs, fun builtin_next/1},
         <<"object">> => builtin_type_class(<<"object">>, {py_native_varargs, fun builtin_object/1}),
         <<"open">> => {py_native_call, fun builtin_open_call/2},
         <<"ord">> => fun builtin_ord/1,
-        <<"property">> => builtin_type_class(<<"property">>, {py_native_call, fun builtin_property/2}),
+        <<"property">> => builtin_type_class(
+            <<"property">>, {py_native_call, fun builtin_property/2}
+        ),
         <<"range">> => builtin_type_class(<<"range">>, {py_native_varargs, fun builtin_range/1}),
         <<"repr">> => fun builtin_repr/1,
         <<"reversed">> => {py_native_varargs, fun builtin_reversed/1},
@@ -154,9 +162,15 @@ env() ->
         <<"slice">> => builtin_type_class(<<"slice">>, {py_native_varargs, fun builtin_slice/1}),
         <<"sorted">> => {py_native_call, fun builtin_sorted/2},
         <<"str">> => builtin_type_class(<<"str">>, str_type_constructor()),
-        <<"staticmethod">> => builtin_type_class(<<"staticmethod">>, {py_native_varargs, fun builtin_staticmethod/1}),
-        <<"classmethod">> => builtin_type_class(<<"classmethod">>, {py_native_varargs, fun builtin_classmethod/1}),
-        <<"complex">> => builtin_type_class(<<"complex">>, {py_native_varargs, fun builtin_complex/1}),
+        <<"staticmethod">> => builtin_type_class(
+            <<"staticmethod">>, {py_native_varargs, fun builtin_staticmethod/1}
+        ),
+        <<"classmethod">> => builtin_type_class(
+            <<"classmethod">>, {py_native_varargs, fun builtin_classmethod/1}
+        ),
+        <<"complex">> => builtin_type_class(
+            <<"complex">>, {py_native_varargs, fun builtin_complex/1}
+        ),
         <<"sum">> => {py_native_call, fun builtin_sum/2},
         <<"tuple">> => builtin_type_class(<<"tuple">>, {py_native_varargs, fun builtin_tuple/1}),
         <<"type">> => builtin_type_class(<<"type">>, {py_native_call, fun builtin_type/2}),
@@ -298,7 +312,11 @@ generic_alias_type() ->
 type_union(Left, Right) ->
     case {type_union_operand(Left), type_union_operand(Right)} of
         {true, true} ->
-            {ok, {py_union_type, dedupe_type_union_options(type_union_options(Left) ++ type_union_options(Right))}};
+            {ok,
+                {py_union_type,
+                    dedupe_type_union_options(
+                        type_union_options(Left) ++ type_union_options(Right)
+                    )}};
         _ ->
             error
     end.
@@ -377,7 +395,15 @@ open(Args) ->
     builtin_open(Args).
 
 builtin_open_call(Args, KwArgs) ->
-    Allowed = [<<"mode">>, <<"buffering">>, <<"encoding">>, <<"errors">>, <<"newline">>, <<"closefd">>, <<"opener">>],
+    Allowed = [
+        <<"mode">>,
+        <<"buffering">>,
+        <<"encoding">>,
+        <<"errors">>,
+        <<"newline">>,
+        <<"closefd">>,
+        <<"opener">>
+    ],
     Unknown = maps:keys(maps:without(Allowed, KwArgs)),
     case Unknown of
         [] -> ok;
@@ -397,15 +423,20 @@ builtin_open_call(Args, KwArgs) ->
 
 builtin_len({py_ref, _} = Ref) ->
     case pyrlang_heap:type(Ref) of
-        list -> length(pyrlang_heap:list_items(Ref));
-        dict -> length(pyrlang_heap:dict_items(Ref));
-        set -> length(pyrlang_heap:set_items(Ref));
+        list ->
+            length(pyrlang_heap:list_items(Ref));
+        dict ->
+            length(pyrlang_heap:dict_items(Ref));
+        set ->
+            length(pyrlang_heap:set_items(Ref));
         instance ->
             case tuple_subclass_items(Ref) of
-                {ok, Items} -> length(Items);
+                {ok, Items} ->
+                    length(Items);
                 error ->
                     case string_subclass_value(Ref) of
-                        {ok, Value} -> string_length(Value);
+                        {ok, Value} ->
+                            string_length(Value);
                         error ->
                             try pyrlang_object:get_attr(Ref, <<"__len__">>) of
                                 Len ->
@@ -416,8 +447,10 @@ builtin_len({py_ref, _} = Ref) ->
                             end
                     end
             end;
-        object -> length(pyrlang_heap:object_attrs(Ref));
-        Type -> erlang:error({type_error, {len, Type}})
+        object ->
+            length(pyrlang_heap:object_attrs(Ref));
+        Type ->
+            erlang:error({type_error, {len, Type}})
     end;
 builtin_len(Binary) when is_binary(Binary) ->
     string_length(Binary);
@@ -520,7 +553,11 @@ builtin_iter([Callable, Sentinel]) ->
         true ->
             pyrlang_iter:callable_sentinel(Callable, Sentinel);
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"TypeError">>), <<"iter(v, w): v must be callable">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"TypeError">>), <<"iter(v, w): v must be callable">>
+                )
+            )
     end;
 builtin_iter(Args) ->
     erlang:error({arity_error, {iter, length(Args)}}).
@@ -529,7 +566,8 @@ builtin_abs({py_complex, Real, Imag}) ->
     math:sqrt(Real * Real + Imag * Imag);
 builtin_abs(Value) ->
     case numeric_value(Value) of
-        {ok, Number} -> abs(Number);
+        {ok, Number} ->
+            abs(Number);
         error ->
             case call_binary_special(Value, <<"__abs__">>, []) of
                 {ok, Result} -> Result;
@@ -540,7 +578,12 @@ builtin_abs(Value) ->
 builtin_divmod(Left, Right) ->
     case {numeric_value(Left), numeric_value(Right)} of
         {{ok, _LeftNum}, {ok, 0}} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ZeroDivisionError">>), <<"integer division or modulo by zero">>));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ZeroDivisionError">>),
+                    <<"integer division or modulo by zero">>
+                )
+            );
         {{ok, LeftNum}, {ok, RightNum}} ->
             Quotient = floor(LeftNum / RightNum),
             {Quotient, LeftNum - Quotient * RightNum};
@@ -664,9 +707,13 @@ builtin_int([true]) ->
 builtin_int([false]) ->
     0;
 builtin_int([Value]) when is_binary(Value) ->
-    try binary_to_integer(Value)
+    try
+        binary_to_integer(Value)
     catch
-        error:badarg -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value))
+        error:badarg ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value)
+            )
     end;
 builtin_int([Value]) when is_list(Value) ->
     builtin_int([unicode:characters_to_binary(Value)]);
@@ -720,7 +767,8 @@ numeric_bool(false) -> 0.
 
 int_subclass_constructor(Class) ->
     IntClass = builtin_type_class(<<"int">>, {py_native_varargs, fun builtin_int/1}),
-    is_class_ref(Class) andalso Class =/= IntClass andalso lists:member(IntClass, pyrlang_object:mro(Class)).
+    is_class_ref(Class) andalso Class =/= IntClass andalso
+        lists:member(IntClass, pyrlang_object:mro(Class)).
 
 int_subclass_value({py_ref, _} = Ref) ->
     try pyrlang_heap:type(Ref) of
@@ -742,9 +790,13 @@ parse_int_binary(Value, Base0) ->
     Clean0 = binary:replace(trim_binary(Value), <<"_">>, <<>>, [global]),
     {Sign, Clean1} = int_sign(Clean0),
     {Base, Digits} = int_digits_for_base(Clean1, Base0),
-    try Sign * binary_to_integer(Digits, Base)
+    try
+        Sign * binary_to_integer(Digits, Base)
     catch
-        error:badarg -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value))
+        error:badarg ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value)
+            )
     end.
 
 int_sign(<<$-, Rest/binary>>) ->
@@ -771,7 +823,9 @@ int_digits_for_base(Digits, 0) ->
 int_digits_for_base(Digits, Base) when Base >= 2, Base =< 36 ->
     {Base, Digits};
 int_digits_for_base(_Digits, Base) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_base, Base})).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_base, Base})
+    ).
 
 trim_binary(Binary) ->
     unicode:characters_to_binary(string:trim(binary_to_list(Binary))).
@@ -793,12 +847,19 @@ builtin_float([Value]) when is_binary(Value) ->
         {ok, Special} ->
             Special;
         error ->
-            try binary_to_float(Value)
+            try
+                binary_to_float(Value)
             catch
                 error:badarg ->
-                    try binary_to_integer(Value) * 1.0
+                    try
+                        binary_to_integer(Value) * 1.0
                     catch
-                        error:badarg -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Value))
+                        error:badarg ->
+                            pyrlang_exception:raise(
+                                pyrlang_exception:make(
+                                    pyrlang_exception:type(<<"ValueError">>), Value
+                                )
+                            )
                     end
             end
     end;
@@ -856,7 +917,11 @@ builtin_input(Args) ->
 read_input_line() ->
     case io:get_line(standard_io, "") of
         eof ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"EOFError">>), <<"EOF when reading a line">>));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"EOFError">>), <<"EOF when reading a line">>
+                )
+            );
         Line ->
             strip_line_ending(unicode:characters_to_binary(Line))
     end.
@@ -946,13 +1011,28 @@ builtin_id(Value) ->
 builtin_dir({py_ref, _} = Ref) ->
     Names =
         case pyrlang_heap:type(Ref) of
-            module -> maps:keys(pyrlang_module:env(Ref));
-            instance -> instance_dir_names(Ref);
-            class -> class_dir_names(Ref);
-            dict -> [<<"clear">>, <<"copy">>, <<"get">>, <<"items">>, <<"keys">>, <<"setdefault">>, <<"values">>];
-            list -> [<<"append">>, <<"copy">>, <<"extend">>, <<"insert">>, <<"pop">>];
-            set -> [<<"add">>, <<"discard">>];
-            _Type -> []
+            module ->
+                maps:keys(pyrlang_module:env(Ref));
+            instance ->
+                instance_dir_names(Ref);
+            class ->
+                class_dir_names(Ref);
+            dict ->
+                [
+                    <<"clear">>,
+                    <<"copy">>,
+                    <<"get">>,
+                    <<"items">>,
+                    <<"keys">>,
+                    <<"setdefault">>,
+                    <<"values">>
+                ];
+            list ->
+                [<<"append">>, <<"copy">>, <<"extend">>, <<"insert">>, <<"pop">>];
+            set ->
+                [<<"add">>, <<"discard">>];
+            _Type ->
+                []
         end,
     pyrlang_heap:list(lists:sort(Names));
 builtin_dir(_Value) ->
@@ -969,15 +1049,17 @@ instance_dir_names(Ref) ->
     lists:usort(Attrs ++ ClassAttrs).
 
 class_dir_names(Class) ->
-    lists:usort(lists:flatmap(
-        fun
-            ({py_ref, _} = MroClass) ->
-                maps:keys(maps:get(attrs, pyrlang_heap:data(MroClass)));
-            (_Other) ->
-                []
-        end,
-        pyrlang_object:mro(Class)
-    )).
+    lists:usort(
+        lists:flatmap(
+            fun
+                ({py_ref, _} = MroClass) ->
+                    maps:keys(maps:get(attrs, pyrlang_heap:data(MroClass)));
+                (_Other) ->
+                    []
+            end,
+            pyrlang_object:mro(Class)
+        )
+    ).
 
 builtin_vars([]) ->
     erlang:error({type_error, {vars, no_eval_context}});
@@ -1099,7 +1181,9 @@ int_byteorder_binary(<<"big">>) ->
 int_byteorder_binary(<<"little">>) ->
     little;
 int_byteorder_binary(Value) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_byteorder, Value})).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), {invalid_byteorder, Value})
+    ).
 
 int_from_bytes_values(Bytes) when is_binary(Bytes) ->
     binary_to_list(Bytes);
@@ -1157,7 +1241,8 @@ builtin_str({py_ref, _} = Ref) ->
                                 true -> builtin_ref_str(Ref);
                                 false -> builtin_str(Value)
                             end;
-                        error -> builtin_ref_str(Ref)
+                        error ->
+                            builtin_ref_str(Ref)
                     end;
                 _ ->
                     builtin_ref_str(Ref)
@@ -1197,9 +1282,12 @@ builtin_ref_str(Ref) ->
                     Value;
                 {py_ref, _} = Returned ->
                     case string_subclass_value(Returned) of
-                        {ok, _StringValue} -> Returned;
-                        error when Returned =:= Ref -> unicode:characters_to_binary(io_lib:format("~p", [Ref]));
-                        error -> builtin_str(Returned)
+                        {ok, _StringValue} ->
+                            Returned;
+                        error when Returned =:= Ref ->
+                            unicode:characters_to_binary(io_lib:format("~p", [Ref]));
+                        error ->
+                            builtin_str(Returned)
                     end;
                 Other ->
                     builtin_str(Other)
@@ -1240,7 +1328,11 @@ builtin_str_call(Args, KwArgs) ->
         [Value] when map_size(KwArgs) =:= 0 ->
             builtin_str(Value);
         [Value] ->
-            str_decode(Value, maps:get(<<"encoding">>, KwArgs, <<"utf-8">>), maps:get(<<"errors">>, KwArgs, <<"strict">>));
+            str_decode(
+                Value,
+                maps:get(<<"encoding">>, KwArgs, <<"utf-8">>),
+                maps:get(<<"errors">>, KwArgs, <<"strict">>)
+            );
         [Value, Encoding] ->
             ensure_no_kwarg(KwArgs, <<"encoding">>, str),
             str_decode(Value, Encoding, maps:get(<<"errors">>, KwArgs, <<"strict">>));
@@ -1282,9 +1374,17 @@ str_decode_ascii(Value, Errors) ->
         [] ->
             Value;
         _ when Errors =:= <<"ignore">> ->
-            << <<Byte>> || <<Byte:8>> <= Value, Byte =< 127 >>;
+            <<<<Byte>> || <<Byte:8>> <= Value, Byte =< 127>>;
         _ when Errors =:= <<"replace">> ->
-            << <<(case Byte =< 127 of true -> Byte; false -> $? end)>> || <<Byte:8>> <= Value >>;
+            <<
+                <<
+                    (case Byte =< 127 of
+                        true -> Byte;
+                        false -> $?
+                    end)
+                >>
+             || <<Byte:8>> <= Value
+            >>;
         _ ->
             raise_unicode_decode_error(Value, <<"ascii">>)
     end.
@@ -1292,27 +1392,46 @@ str_decode_ascii(Value, Errors) ->
 str_input_encoding(Encoding0) ->
     Encoding = string:lowercase(binary_to_list(normalize_name(Encoding0))),
     case Encoding of
-        "utf-8" -> utf8;
-        "utf8" -> utf8;
-        "u8" -> utf8;
-        "ascii" -> ascii;
-        "us-ascii" -> ascii;
-        "latin-1" -> latin1;
-        "latin1" -> latin1;
-        "iso-8859-1" -> latin1;
-        _ -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"LookupError">>), <<"unknown encoding: ", (normalize_name(Encoding0))/binary>>))
+        "utf-8" ->
+            utf8;
+        "utf8" ->
+            utf8;
+        "u8" ->
+            utf8;
+        "ascii" ->
+            ascii;
+        "us-ascii" ->
+            ascii;
+        "latin-1" ->
+            latin1;
+        "latin1" ->
+            latin1;
+        "iso-8859-1" ->
+            latin1;
+        _ ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"LookupError">>),
+                    <<"unknown encoding: ", (normalize_name(Encoding0))/binary>>
+                )
+            )
     end.
 
 raise_unicode_decode_error(Value, Encoding) ->
-    pyrlang_exception:raise(pyrlang_exception:make(
-        pyrlang_exception:type(<<"UnicodeDecodeError">>),
-        <<"'", Encoding/binary, "' codec can't decode bytes of length ", (integer_to_binary(byte_size(Value)))/binary>>
-    )).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"UnicodeDecodeError">>),
+            <<"'", Encoding/binary, "' codec can't decode bytes of length ",
+                (integer_to_binary(byte_size(Value)))/binary>>
+        )
+    ).
 
 ensure_allowed_kwargs(KwArgs, Allowed, Function) ->
     case [Key || Key <- maps:keys(KwArgs), not lists:member(Key, Allowed)] of
-        [] -> ok;
-        Unexpected -> erlang:error({type_error, {unexpected_keyword_argument, Function, Unexpected}})
+        [] ->
+            ok;
+        Unexpected ->
+            erlang:error({type_error, {unexpected_keyword_argument, Function, Unexpected}})
     end.
 
 ensure_no_kwarg(KwArgs, Key, Function) ->
@@ -1372,10 +1491,13 @@ builtin_dict_call(Args, KwArgs) ->
     Dict.
 
 dict_dunder_getitem(Ref, Key) ->
-    try pyrlang_heap:dict_get(Ref, Key)
+    try
+        pyrlang_heap:dict_get(Ref, Key)
     catch
         error:{badkey, Missing} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Missing))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Missing)
+            )
     end.
 
 dict_dunder_new([Class | _Args], _KwArgs) ->
@@ -1395,9 +1517,14 @@ dict_dunder_init(Args, _KwArgs) ->
 dict_update_existing(Ref, Args, KwArgs) ->
     case Args of
         [] ->
-            maps:foreach(fun(Key, Value) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end, KwArgs);
+            maps:foreach(
+                fun(Key, Value) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end, KwArgs
+            );
         [Other] ->
-            lists:foreach(fun({Key, Value}) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end, dict_items_from(Other)),
+            lists:foreach(
+                fun({Key, Value}) -> ok = pyrlang_heap:dict_put(Ref, Key, Value) end,
+                dict_items_from(Other)
+            ),
             dict_update_existing(Ref, [], KwArgs);
         _ ->
             erlang:error({arity_error, {'dict.__init__', length(Args) + 1}})
@@ -1405,7 +1532,8 @@ dict_update_existing(Ref, Args, KwArgs) ->
 
 dict_subclass_constructor(Class) ->
     DictClass = builtin_type_class(<<"dict">>, {py_native_call, fun builtin_dict_call/2}),
-    is_class_ref(Class) andalso Class =/= DictClass andalso lists:member(DictClass, pyrlang_object:mro(Class)).
+    is_class_ref(Class) andalso Class =/= DictClass andalso
+        lists:member(DictClass, pyrlang_object:mro(Class)).
 
 dict_fromkeys([Iterable]) ->
     dict_fromkeys([Iterable, none]);
@@ -1487,8 +1615,12 @@ dict_pop_value(Ref, Key, Default) ->
             Value;
         error ->
             case Default of
-                {default, Value} -> Value;
-                no_default -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key))
+                {default, Value} ->
+                    Value;
+                no_default ->
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"KeyError">>), Key)
+                    )
             end
     end.
 
@@ -1522,7 +1654,8 @@ list_dunder_new(Args) ->
 
 list_subclass_constructor(Class) ->
     ListClass = builtin_type_class(<<"list">>, {py_native_varargs, fun builtin_list/1}),
-    is_class_ref(Class) andalso Class =/= ListClass andalso lists:member(ListClass, pyrlang_object:mro(Class)).
+    is_class_ref(Class) andalso Class =/= ListClass andalso
+        lists:member(ListClass, pyrlang_object:mro(Class)).
 
 list_dunder_setitem(Ref, Index, Value) ->
     ok = pyrlang_heap:list_set(Ref, Index, Value),
@@ -1540,7 +1673,9 @@ list_dunder_append(Ref, Value) ->
     none.
 
 list_dunder_extend(Ref, Other) ->
-    lists:foreach(fun(Value) -> ok = pyrlang_heap:list_append(Ref, Value) end, pyrlang_iter:values(Other)),
+    lists:foreach(
+        fun(Value) -> ok = pyrlang_heap:list_append(Ref, Value) end, pyrlang_iter:values(Other)
+    ),
     none.
 
 list_dunder_insert(Ref, Index, Value) ->
@@ -1550,7 +1685,7 @@ list_dunder_insert(Ref, Index, Value) ->
 str_maketrans([Mapping]) ->
     pyrlang_heap:dict([
         {translation_ord(Key), translation_value(Value)}
-        || {Key, Value} <- mapping_items(Mapping)
+     || {Key, Value} <- mapping_items(Mapping)
     ]);
 str_maketrans([From, To]) ->
     FromChars = unicode_chars(normalize_name(From)),
@@ -1559,7 +1694,12 @@ str_maketrans([From, To]) ->
         true ->
             pyrlang_heap:dict(lists:zip(FromChars, ToChars));
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"the first two maketrans arguments must have equal length">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>),
+                    <<"the first two maketrans arguments must have equal length">>
+                )
+            )
     end;
 str_maketrans([From, To, Delete]) ->
     Base = pyrlang_heap:dict_items(str_maketrans([From, To])),
@@ -1575,7 +1715,12 @@ bytes_maketrans([From, To]) ->
         true ->
             pyrlang_heap:dict(bytes_translation_pairs(FromBytes, ToBytes));
         false ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"maketrans arguments must have same length">>))
+            pyrlang_exception:raise(
+                pyrlang_exception:make(
+                    pyrlang_exception:type(<<"ValueError">>),
+                    <<"maketrans arguments must have same length">>
+                )
+            )
     end;
 bytes_maketrans(Args) ->
     erlang:error({arity_error, {maketrans, length(Args)}}).
@@ -1587,8 +1732,12 @@ bytes_translation_pairs(<<FromByte:8, FromRest/binary>>, <<ToByte:8, ToRest/bina
 
 bytes_fromhex([Value]) ->
     case bytes_fromhex_binary(normalize_name(Value), need_high, <<>>) of
-        {ok, Result} -> Result;
-        {error, Message} -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Message))
+        {ok, Result} ->
+            Result;
+        {error, Message} ->
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), Message)
+            )
     end;
 bytes_fromhex(Args) ->
     erlang:error({arity_error, {fromhex, length(Args)}}).
@@ -1597,7 +1746,9 @@ bytes_fromhex_binary(<<>>, need_high, Acc) ->
     {ok, Acc};
 bytes_fromhex_binary(<<>>, {need_low, _High}, _Acc) ->
     {error, <<"non-hexadecimal number found in fromhex() arg">>};
-bytes_fromhex_binary(<<Byte:8, Rest/binary>>, need_high, Acc) when Byte =:= $\s; Byte =:= $\t; Byte =:= $\n; Byte =:= $\r; Byte =:= $\v; Byte =:= $\f ->
+bytes_fromhex_binary(<<Byte:8, Rest/binary>>, need_high, Acc) when
+    Byte =:= $\s; Byte =:= $\t; Byte =:= $\n; Byte =:= $\r; Byte =:= $\v; Byte =:= $\f
+->
     bytes_fromhex_binary(Rest, need_high, Acc);
 bytes_fromhex_binary(<<Byte:8, Rest/binary>>, need_high, Acc) ->
     case hex_value(Byte) of
@@ -1714,7 +1865,8 @@ normalize_str_index(Index, _Length) ->
 
 string_subclass_constructor(Class) ->
     StrClass = builtin_type_class(<<"str">>, str_type_constructor()),
-    is_class_ref(Class) andalso Class =/= StrClass andalso lists:member(StrClass, pyrlang_object:mro(Class)).
+    is_class_ref(Class) andalso Class =/= StrClass andalso
+        lists:member(StrClass, pyrlang_object:mro(Class)).
 
 tuple_dunder_new([_Class]) ->
     tuple_new_result(_Class, {});
@@ -1725,7 +1877,10 @@ tuple_dunder_new(Args) ->
 
 tuple_new_result(Class, Tuple) ->
     TupleClass = builtin_type_class(<<"tuple">>, {py_native_varargs, fun builtin_tuple/1}),
-    case is_class_ref(Class) andalso Class =/= TupleClass andalso lists:member(TupleClass, pyrlang_object:mro(Class)) of
+    case
+        is_class_ref(Class) andalso Class =/= TupleClass andalso
+            lists:member(TupleClass, pyrlang_object:mro(Class))
+    of
         true ->
             Instance = pyrlang_object:instantiate(Class),
             ok = pyrlang_object:set_attr(Instance, <<"__pyrlang_tuple_items__">>, Tuple),
@@ -1750,7 +1905,8 @@ type_dunder_instancecheck(Class, Object) ->
     case is_class_ref(Class) of
         true ->
             case direct_classinfo_matches(object_class(Object), Class) of
-                true -> true;
+                true ->
+                    true;
                 false ->
                     case proxied_object_class(Object, object_class(Object)) of
                         {ok, ProxyClass} -> direct_classinfo_matches(ProxyClass, Class);
@@ -1767,7 +1923,8 @@ type_dunder_subclasscheck(Class, Subclass) ->
 direct_classinfo_matches(undefined, _ClassInfo) ->
     false;
 direct_classinfo_matches(Class, {py_ref, _} = ClassInfo) ->
-    is_class_ref(Class) andalso is_class_ref(ClassInfo) andalso lists:member(ClassInfo, pyrlang_object:mro(Class));
+    is_class_ref(Class) andalso is_class_ref(ClassInfo) andalso
+        lists:member(ClassInfo, pyrlang_object:mro(Class));
 direct_classinfo_matches({py_ref, _} = Class, {py_exception_type, Expected}) ->
     pyrlang_object:exception_class_matches(Class, Expected);
 direct_classinfo_matches({py_exception_type, Type}, {py_exception_type, Expected}) ->
@@ -1797,21 +1954,27 @@ type_descriptor_value(<<"__mro__">>, Class) ->
 
 builtin_getattr([Object, Name]) ->
     Attr = normalize_name(Name),
-    try builtin_get_attr(Object, Attr)
+    try
+        builtin_get_attr(Object, Attr)
     catch
         error:{attribute_error, _} ->
-            pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"AttributeError">>), Attr));
+            pyrlang_exception:raise(
+                pyrlang_exception:make(pyrlang_exception:type(<<"AttributeError">>), Attr)
+            );
         throw:{py_exception, Exception} ->
             case pyrlang_exception:exception_type(Exception) of
                 <<"AttributeError">> ->
-                    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"AttributeError">>), Attr));
+                    pyrlang_exception:raise(
+                        pyrlang_exception:make(pyrlang_exception:type(<<"AttributeError">>), Attr)
+                    );
                 _ ->
                     pyrlang_exception:raise(Exception)
             end
     end;
 builtin_getattr([Object, Name, Default]) ->
     Attr = normalize_name(Name),
-    try builtin_get_attr(Object, Attr)
+    try
+        builtin_get_attr(Object, Attr)
     catch
         error:{attribute_error, _} ->
             Default;
@@ -1860,7 +2023,8 @@ builtin_isinstance(Object, ClassInfo) ->
     Class = object_class(Object),
     Result =
         case classinfo_matches(Class, ClassInfo) of
-            true -> true;
+            true ->
+                true;
             false ->
                 case proxied_classinfo_matches(Object, Class, ClassInfo) of
                     true -> true;
@@ -1874,7 +2038,8 @@ builtin_issubclass(Class, ClassInfo) ->
     Trace = trace_typecheck_start(issubclass, Class, ClassInfo),
     Result =
         case is_class_ref(Class) of
-            true -> classinfo_matches(Class, ClassInfo);
+            true ->
+                classinfo_matches(Class, ClassInfo);
             false ->
                 case Class of
                     {py_exception_type, _Type} -> classinfo_matches(Class, ClassInfo);
@@ -1904,7 +2069,12 @@ trace_typecheck_start(Kind, Object, ClassInfo) ->
                     io:format(
                         standard_error,
                         "PYRLANG_TYPECHECK_START ~B ~p object=~s classinfo=~s~n",
-                        [Next, Kind, describe_typecheck_value(Object), describe_typecheck_value(ClassInfo)]
+                        [
+                            Next,
+                            Kind,
+                            describe_typecheck_value(Object),
+                            describe_typecheck_value(ClassInfo)
+                        ]
                     ),
                     {Kind, Next};
                 false ->
@@ -1964,8 +2134,10 @@ object_class({py_ref, _} = Object) ->
                 undefined -> builtin_type_class(<<"type">>, {py_native_call, fun builtin_type/2});
                 Metaclass -> Metaclass
             end;
-        module -> module_type();
-        instance -> maps:get(class, pyrlang_heap:data(Object));
+        module ->
+            module_type();
+        instance ->
+            maps:get(class, pyrlang_heap:data(Object));
         list ->
             case pyrlang_heap:data(Object) of
                 #{class := Class} -> Class;
@@ -1976,10 +2148,14 @@ object_class({py_ref, _} = Object) ->
                 #{class := Class} -> Class;
                 _ -> builtin_type_class(<<"dict">>, {py_native_call, fun builtin_dict_call/2})
             end;
-        set -> builtin_type_class(<<"set">>, {py_native_varargs, fun builtin_set/1});
-        iterator -> builtin_type_class(<<"iterator">>, {py_native_varargs, fun builtin_object/1});
-        generator -> generator_type();
-        _Type -> undefined
+        set ->
+            builtin_type_class(<<"set">>, {py_native_varargs, fun builtin_set/1});
+        iterator ->
+            builtin_type_class(<<"iterator">>, {py_native_varargs, fun builtin_object/1});
+        generator ->
+            generator_type();
+        _Type ->
+            undefined
     end;
 object_class(none) ->
     none_type();
@@ -2097,7 +2273,8 @@ is_string_subclass_instance({py_ref, _} = Ref) ->
     ).
 
 class_named({py_ref, _} = Class, Name) ->
-    try pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
+    try
+        pyrlang_heap:type(Class) =:= class andalso pyrlang_object:class_name(Class) =:= Name
     catch
         _:_ -> false
     end;
@@ -2110,11 +2287,14 @@ classinfo_matches(Class, {py_ref, _} = ClassInfo) ->
     case is_class_ref(ClassInfo) of
         true ->
             case is_collections_abc_iterable(ClassInfo) of
-                true -> class_is_iterable(Class);
+                true ->
+                    class_is_iterable(Class);
                 false ->
-                    lists:member(ClassInfo, pyrlang_object:mro(Class)) orelse subclasscheck_matches(Class, ClassInfo)
+                    lists:member(ClassInfo, pyrlang_object:mro(Class)) orelse
+                        subclasscheck_matches(Class, ClassInfo)
             end;
-        false -> false
+        false ->
+            false
     end;
 classinfo_matches({py_ref, _} = Class, {py_exception_type, Expected}) ->
     pyrlang_object:exception_class_matches(Class, Expected);
@@ -2190,7 +2370,8 @@ instancecheck_matches(_Object, _ClassInfo) ->
 
 is_collections_abc_iterable(ClassInfo) ->
     case class_named(ClassInfo, <<"Iterable">>) of
-        false -> false;
+        false ->
+            false;
         true ->
             try pyrlang_object:get_attr(ClassInfo, <<"__module__">>) of
                 Module -> Module =:= <<"collections.abc">> orelse Module =:= <<"_collections_abc">>
@@ -2200,7 +2381,16 @@ is_collections_abc_iterable(ClassInfo) ->
     end.
 
 class_is_iterable({py_ref, _} = Class) ->
-    IterableNames = [<<"list">>, <<"tuple">>, <<"dict">>, <<"set">>, <<"str">>, <<"range">>, <<"iterator">>, <<"generator">>],
+    IterableNames = [
+        <<"list">>,
+        <<"tuple">>,
+        <<"dict">>,
+        <<"set">>,
+        <<"str">>,
+        <<"range">>,
+        <<"iterator">>,
+        <<"generator">>
+    ],
     Mro = pyrlang_object:mro(Class),
     lists:any(
         fun(MroClass) ->
@@ -2222,7 +2412,8 @@ class_has_attr(_Class, _Attr) ->
     false.
 
 is_class_ref({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref) =:= class
+    try
+        pyrlang_heap:type(Ref) =:= class
     catch
         _:_ -> false
     end;
@@ -2322,7 +2513,12 @@ builtin_sorted([Iterable], KwArgs) ->
             Decorated = [{sort_key(Key, Value), Index, Value} || {Index, Value} <- Indexed],
             Sorted = lists:sort(fun sorted_entry_less/2, Decorated),
             Values = [Value || {_KeyValue, _Index, Value} <- Sorted],
-            pyrlang_heap:list(case Reverse of true -> lists:reverse(Values); false -> Values end);
+            pyrlang_heap:list(
+                case Reverse of
+                    true -> lists:reverse(Values);
+                    false -> Values
+                end
+            );
         _ ->
             erlang:error({type_error, {unexpected_keyword_argument, Unknown}})
     end;
@@ -2365,7 +2561,9 @@ builtin_extreme(Mode, Args, KwArgs) ->
     end.
 
 extreme_values(_Mode, [], _Key, no_default) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"empty sequence">>));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"empty sequence">>)
+    );
 extreme_values(_Mode, [], _Key, Default) ->
     Default;
 extreme_values(Mode, [First | Rest], Key, _Default) ->
@@ -2449,7 +2647,8 @@ sum_radd_special(Value, Acc) ->
     end.
 
 safe_heap_type({py_ref, _} = Ref) ->
-    try pyrlang_heap:type(Ref)
+    try
+        pyrlang_heap:type(Ref)
     catch
         _:_ -> undefined
     end.
@@ -2584,9 +2783,15 @@ open_file_instance(Path, Mode) ->
             Class = pyrlang_object:new_class(<<"File">>, [], #{}),
             Instance = pyrlang_object:instantiate(Class),
             ok = pyrlang_object:set_attr(Instance, <<"__pyrlang_unsendable__">>, open_file),
-            ok = pyrlang_object:set_attr(Instance, <<"read">>, {py_native_varargs, fun(Args) -> file_read(Key, Args) end}),
-            ok = pyrlang_object:set_attr(Instance, <<"write">>, fun(Content) -> file_write(Key, Content) end),
-            ok = pyrlang_object:set_attr(Instance, <<"seek">>, {py_native_varargs, fun(Args) -> file_seek(Key, Args) end}),
+            ok = pyrlang_object:set_attr(
+                Instance, <<"read">>, {py_native_varargs, fun(Args) -> file_read(Key, Args) end}
+            ),
+            ok = pyrlang_object:set_attr(Instance, <<"write">>, fun(Content) ->
+                file_write(Key, Content)
+            end),
+            ok = pyrlang_object:set_attr(
+                Instance, <<"seek">>, {py_native_varargs, fun(Args) -> file_seek(Key, Args) end}
+            ),
             ok = pyrlang_object:set_attr(Instance, <<"tell">>, fun() -> file_tell(Key) end),
             ok = pyrlang_object:set_attr(Instance, <<"close">>, fun() -> file_close(Key) end),
             ok = pyrlang_object:set_attr(Instance, <<"__enter__">>, fun() -> Instance end),
@@ -2612,7 +2817,11 @@ file_open_options(<<"a">>) ->
 file_open_options(<<"ab">>) ->
     file_open_options(<<"a">>);
 file_open_options(Mode) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"unsupported file mode: ", Mode/binary>>)).
+    pyrlang_exception:raise(
+        pyrlang_exception:make(
+            pyrlang_exception:type(<<"ValueError">>), <<"unsupported file mode: ", Mode/binary>>
+        )
+    ).
 
 file_read(Key, []) ->
     State = readable_file_state(Key),
@@ -2650,10 +2859,18 @@ file_seek(Key, [Offset, Whence]) when is_integer(Offset), is_integer(Whence) ->
     State = file_state(Key, any),
     Position =
         case Whence of
-            0 -> {bof, Offset};
-            1 -> {cur, Offset};
-            2 -> {eof, Offset};
-            _ -> pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"ValueError">>), <<"invalid whence">>))
+            0 ->
+                {bof, Offset};
+            1 ->
+                {cur, Offset};
+            2 ->
+                {eof, Offset};
+            _ ->
+                pyrlang_exception:raise(
+                    pyrlang_exception:make(
+                        pyrlang_exception:type(<<"ValueError">>), <<"invalid whence">>
+                    )
+                )
         end,
     case file:position(maps:get(device, State), Position) of
         {ok, NewPosition} -> NewPosition;
@@ -2706,13 +2923,21 @@ file_state(Key, Capability) ->
     end.
 
 raise_os_error(enoent) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"FileNotFoundError">>), enoent));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"FileNotFoundError">>), enoent)
+    );
 raise_os_error(eacces) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"PermissionError">>), eacces));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"PermissionError">>), eacces)
+    );
 raise_os_error(eisdir) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"IsADirectoryError">>), eisdir));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"IsADirectoryError">>), eisdir)
+    );
 raise_os_error(enotdir) ->
-    pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"NotADirectoryError">>), enotdir));
+    pyrlang_exception:raise(
+        pyrlang_exception:make(pyrlang_exception:type(<<"NotADirectoryError">>), enotdir)
+    );
 raise_os_error(Reason) ->
     pyrlang_exception:raise(pyrlang_exception:make(pyrlang_exception:type(<<"OSError">>), Reason)).
 
@@ -2728,7 +2953,13 @@ builtin_property(Args, KwArgs) ->
         false -> erlang:error({arity_error, {property, length(Args), maps:size(KwArgs)}})
     end,
     ParamNames = [<<"fget">>, <<"fset">>, <<"fdel">>, <<"doc">>],
-    case [Name || {Name, _Value} <- lists:zip(lists:sublist(ParamNames, length(Args)), Args), maps:is_key(Name, KwArgs)] of
+    case
+        [
+            Name
+         || {Name, _Value} <- lists:zip(lists:sublist(ParamNames, length(Args)), Args),
+            maps:is_key(Name, KwArgs)
+        ]
+    of
         [] ->
             builtin_property_bound(
                 property_arg(1, <<"fget">>, Args, KwArgs, none),
@@ -2828,7 +3059,9 @@ builtin_type([Name, BasesRef, AttrsRef], KwArgs) ->
 builtin_type(Args, KwArgs) when map_size(KwArgs) =:= 0 ->
     erlang:error({arity_error, {type, length(Args)}});
 builtin_type(Args, KwArgs) ->
-    erlang:error({type_error, {unexpected_keyword_argument, {type, length(Args), maps:keys(KwArgs)}}}).
+    erlang:error(
+        {type_error, {unexpected_keyword_argument, {type, length(Args), maps:keys(KwArgs)}}}
+    ).
 
 select_metaclass(Bases) ->
     select_metaclass(Bases, undefined).
@@ -2855,11 +3088,17 @@ call_metaclass(Metaclass, Name, Bases, Attrs0, KwArgs) ->
 
 prepare_classdict_attrs(Metaclass, Attrs) ->
     Prepared =
-        case is_class_ref(Metaclass) andalso pyrlang_object:class_name(Metaclass) =:= <<"EnumType">> of
-        true ->
-            maps:put(<<"_member_names">>, pyrlang_heap:dict([{Name, none} || Name <- enum_member_names(Attrs)]), Attrs);
-        false ->
-            Attrs
+        case
+            is_class_ref(Metaclass) andalso pyrlang_object:class_name(Metaclass) =:= <<"EnumType">>
+        of
+            true ->
+                maps:put(
+                    <<"_member_names">>,
+                    pyrlang_heap:dict([{Name, none} || Name <- enum_member_names(Attrs)]),
+                    Attrs
+                );
+            false ->
+                Attrs
         end,
     class_attrs_public(Prepared).
 
@@ -2888,8 +3127,17 @@ put_class_attr(Name, Value, Attrs) ->
     Attrs1#{Name => Value}.
 
 class_attr_order(Attrs) ->
-    Ordered = [Name || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Attrs)],
-    Ordered ++ [Name || Name <- maps:keys(Attrs), Name =/= ?CLASS_ATTR_ORDER_KEY, not lists:member(Name, Ordered)].
+    Ordered = [
+        Name
+     || Name <- maps:get(?CLASS_ATTR_ORDER_KEY, Attrs, []), maps:is_key(Name, Attrs)
+    ],
+    Ordered ++
+        [
+            Name
+         || Name <- maps:keys(Attrs),
+            Name =/= ?CLASS_ATTR_ORDER_KEY,
+            not lists:member(Name, Ordered)
+        ].
 
 is_class_internal_attr(<<"__pyrlang_", _Rest/binary>>) ->
     true;
@@ -2936,7 +3184,8 @@ builtin_import(Args, KwArgs) ->
 builtin_import_bound(Name, FromList) ->
     Module = pyrlang_module:load(Name),
     case truthy_fromlist(FromList) of
-        true -> Module;
+        true ->
+            Module;
         false ->
             case binary:split(normalize_name(Name), <<".">>) of
                 [Top, _Rest] -> pyrlang_module:load(Top);
@@ -2997,12 +3246,8 @@ bind_import_keywords(KwArgs, ParamNames, Defaults, Bound0) ->
 import_bound_tuple({ok, #{<<"name">> := undefined}}) ->
     {error, arity};
 import_bound_tuple({ok, Bound}) ->
-    {ok,
-        maps:get(<<"name">>, Bound),
-        maps:get(<<"globals">>, Bound),
-        maps:get(<<"locals">>, Bound),
-        maps:get(<<"fromlist">>, Bound),
-        maps:get(<<"level">>, Bound)};
+    {ok, maps:get(<<"name">>, Bound), maps:get(<<"globals">>, Bound), maps:get(<<"locals">>, Bound),
+        maps:get(<<"fromlist">>, Bound), maps:get(<<"level">>, Bound)};
 import_bound_tuple(Error) ->
     Error.
 
@@ -3064,7 +3309,8 @@ instance_truthy(Ref) ->
                     true;
                 error ->
                     case tuple_subclass_items(Ref) of
-                        {ok, Items} -> Items =/= [];
+                        {ok, Items} ->
+                            Items =/= [];
                         error ->
                             case string_subclass_value(Ref) of
                                 {ok, Value} -> Value =/= <<>>;
@@ -3118,7 +3364,8 @@ normalize_name(Name) when is_list(Name) ->
     unicode:characters_to_binary(Name);
 normalize_name({py_ref, _} = Name) ->
     case string_subclass_value(Name) of
-        {ok, Value} -> Value;
+        {ok, Value} ->
+            Value;
         error ->
             case pathlike_name(Name) of
                 {ok, Value} -> Value;
