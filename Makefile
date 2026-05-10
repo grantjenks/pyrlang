@@ -1,5 +1,6 @@
 ERLC ?= erlc
 ERL ?= erl
+ERLC_FLAGS ?= -Wall -Werror
 
 EBIN := ebin
 INCLUDE := include
@@ -15,7 +16,7 @@ $(EBIN):
 	mkdir -p $(EBIN)
 
 compile: $(EBIN)
-	$(ERLC) -Wall -I $(INCLUDE) -o $(EBIN) $(SRC) $(TEST)
+	$(ERLC) $(ERLC_FLAGS) -I $(INCLUDE) -o $(EBIN) $(SRC) $(TEST)
 
 test: compile
 	$(ERL) -pa $(EBIN) -noshell -eval 'case eunit:test([$(MODULES)], [verbose]) of ok -> halt(0); _ -> halt(1) end.'
