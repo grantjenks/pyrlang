@@ -35,8 +35,18 @@ elif command -v yum >/dev/null 2>&1; then
         perl \
         tar \
         which
+elif command -v apk >/dev/null 2>&1; then
+    apk add --no-cache \
+        bash \
+        build-base \
+        curl \
+        linux-headers \
+        ncurses-dev \
+        openssl-dev \
+        perl \
+        tar
 else
-    echo "unsupported Linux package manager; expected dnf or yum" >&2
+    echo "unsupported Linux package manager; expected dnf, yum, or apk" >&2
     exit 1
 fi
 

@@ -60,9 +60,18 @@ jobs:
             macos_deployment_target: ""
             setup_beam: false
 
+          - name: Linux aarch64
+            os: ubuntu-24.04-arm
+            platform: linux
+            archs: aarch64
+            runner_arch: aarch64
+            macos_deployment_target: ""
+            setup_beam: false
+
     env:
       CIBW_ARCHS: ${{ matrix.archs }}
       CIBW_BEFORE_ALL_LINUX: bash {project}/scripts/build-otp-linux.sh
+      CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
       CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_deployment_target }}
 
