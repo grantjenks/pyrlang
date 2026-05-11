@@ -50,6 +50,8 @@ def _run(module: str, args: list[str]) -> int:
         str(erl),
         "-pa",
         str(ebin),
+        "-boot",
+        "start_clean",
         "-noshell",
         "-eval",
         f"{module}:main(init:get_plain_arguments()).",
