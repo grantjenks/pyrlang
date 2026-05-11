@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CIBW_BUILD: "cp313-*"
@@ -176,3 +177,8 @@ jobs:
               --title "$GITHUB_REF_NAME" \
               --generate-notes
           fi
+
+      - name: Publish PyPI Release
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheelhouse
