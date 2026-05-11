@@ -1,0 +1,92 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build macOS arm64 wheel
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    env:
+      CIBW_BUILD: "cp313-*"
+      CIBW_ARCHS_MACOS: "arm64"
+      CIBW_TEST_COMMAND: >-
+        python -c "import pathlib, subprocess, tempfile;
+        path = pathlib.Path(tempfile.mkdtemp()) / 'smoke.py';
+        path.write_text('40 + 2\n', encoding='utf-8');
+        out = subprocess.check_output(['pyrlang', str(path)], text=True).strip();
+        assert out == '42', out"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Derive version from tag
+        run: |
+          case "$GITHUB_REF_NAME" in
+            v[0-9]*.[0-9]*.[0-9]*)
+              VERSION="${GITHUB_REF_NAME#v}"
+              ;;
+            *)
+              echo "Release tags must look like v0.1.0; got $GITHUB_REF_NAME" >&2
+              exit 1
+              ;;
+          esac
+          echo "PYRLANG_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Set up Erlang/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "28"
+
+      - name: Show tool versions
+        run: |
+          test "$(uname -m)" = "arm64"
+          python --version
+          erl -noshell -eval 'io:format("OTP ~s~n", [erlang:system_info(otp_release)]), halt(0).'
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==3.4.1
+
+      - name: Build wheel
+        run: python -m cibuildwheel --platform macos --output-dir wheelhouse
+
+      - name: Check wheel size
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          limit = 100 * 1024 * 1024
+          wheels = sorted(Path("wheelhouse").glob("*.whl"))
+          if not wheels:
+              raise SystemExit("no wheels built")
+          for wheel in wheels:
+              size = wheel.stat().st_size
+              print(f"{wheel.name}: {size / 1024 / 1024:.2f} MiB")
+              if size > limit:
+                  raise SystemExit(f"{wheel.name} exceeds 100 MiB PyPI file limit")
+          PY
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" wheelhouse/*.whl --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" wheelhouse/*.whl \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi

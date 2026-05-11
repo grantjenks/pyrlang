@@ -2,3 +2,8 @@ ebin/
 erl_crash.dump
 *.beam
 *.db
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
