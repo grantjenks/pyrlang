@@ -26,8 +26,8 @@ mkdir "$workdir/otp"
 tar -xzf "$workdir/otp.tar.gz" -C "$workdir/otp" --strip-components=1
 
 export MACOSX_DEPLOYMENT_TARGET="$deployment_target"
-export CFLAGS="${CFLAGS:-} -mmacosx-version-min=${deployment_target}"
-export CXXFLAGS="${CXXFLAGS:-} -mmacosx-version-min=${deployment_target}"
+export CFLAGS="${CFLAGS:--O2 -g} -mmacosx-version-min=${deployment_target}"
+export CXXFLAGS="${CXXFLAGS:--O2 -g} -mmacosx-version-min=${deployment_target}"
 export LDFLAGS="${LDFLAGS:-} -mmacosx-version-min=${deployment_target}"
 
 cd "$workdir/otp"
