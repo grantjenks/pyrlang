@@ -8,22 +8,67 @@ on:
 permissions:
   contents: write
 
+env:
+  CIBW_BUILD: "cp313-*"
+  CIBW_TEST_COMMAND: >-
+    python -c "import pathlib, subprocess, tempfile;
+    path = pathlib.Path(tempfile.mkdtemp()) / 'smoke.py';
+    path.write_text('40 + 2\n', encoding='utf-8');
+    out = subprocess.check_output(['pyrlang', str(path)], text=True).strip();
+    assert out == '42', out"
+  PYRLANG_OTP_VERSION: "28.5"
+
 jobs:
   build:
-    name: Build macOS arm64 wheel
-    runs-on: macos-15
-    timeout-minutes: 30
+    name: Build ${{ matrix.name }} wheel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-15
+            platform: macos
+            archs: arm64
+            runner_arch: arm64
+            macos_deployment_target: "15.0"
+            setup_beam: true
+
+          - name: macOS x86_64
+            os: macos-15-intel
+            platform: macos
+            archs: x86_64
+            runner_arch: x86_64
+            macos_deployment_target: "15.0"
+            setup_beam: true
+
+          - name: Windows x64
+            os: windows-2025
+            platform: windows
+            archs: AMD64
+            runner_arch: x86_64
+            macos_deployment_target: ""
+            setup_beam: true
+
+          - name: Linux x86_64
+            os: ubuntu-latest
+            platform: linux
+            archs: x86_64
+            runner_arch: x86_64
+            macos_deployment_target: ""
+            setup_beam: false
 
     env:
-      CIBW_BUILD: "cp313-*"
-      CIBW_ARCHS_MACOS: "arm64"
-      MACOSX_DEPLOYMENT_TARGET: "15.0"
-      CIBW_TEST_COMMAND: >-
-        python -c "import pathlib, subprocess, tempfile;
-        path = pathlib.Path(tempfile.mkdtemp()) / 'smoke.py';
-        path.write_text('40 + 2\n', encoding='utf-8');
-        out = subprocess.check_output(['pyrlang', str(path)], text=True).strip();
-        assert out == '42', out"
+      CIBW_ARCHS: ${{ matrix.archs }}
+      CIBW_BEFORE_ALL_LINUX: bash {project}/scripts/build-otp-linux.sh
+      CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_deployment_target }}
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Check out repository
@@ -48,21 +93,51 @@ jobs:
           python-version: "3.13"
 
       - name: Set up Erlang/OTP
+        if: matrix.setup_beam
         uses: erlef/setup-beam@v1
         with:
-          otp-version: "28"
+          otp-version: ${{ env.PYRLANG_OTP_VERSION }}
 
       - name: Show tool versions
         run: |
-          test "$(uname -m)" = "arm64"
+          test "$(uname -m)" = "${{ matrix.runner_arch }}"
           python --version
-          erl -noshell -eval 'io:format("OTP ~s~n", [erlang:system_info(otp_release)]), halt(0).'
+          if [ "${{ matrix.platform }}" = linux ]; then
+            docker --version
+          else
+            erl -noshell -eval 'io:format("OTP ~s~n", [erlang:system_info(otp_release)]), halt(0).'
+          fi
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==3.4.1
 
       - name: Build wheel
-        run: python -m cibuildwheel --platform macos --output-dir wheelhouse
+        run: python -m cibuildwheel --platform "${{ matrix.platform }}" --output-dir wheelhouse
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: wheelhouse
+          merge-multiple: true
 
       - name: Check wheel size
         run: |

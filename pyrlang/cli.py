@@ -41,9 +41,14 @@ def _ensure_executable(path: Path) -> None:
         path.chmod(desired)
 
 
+def _erl_executable(runtime: Path) -> Path:
+    name = "erl.exe" if sys.platform == "win32" else "erl"
+    return runtime / "otp" / "bin" / name
+
+
 def _run(module: str, args: list[str]) -> int:
     runtime = get_runtime_path()
-    erl = runtime / "otp" / "bin" / "erl"
+    erl = _erl_executable(runtime)
     ebin = runtime / "ebin"
     _ensure_executable(erl)
     command = [
