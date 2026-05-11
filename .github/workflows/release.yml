@@ -30,11 +30,11 @@ jobs:
       matrix:
         include:
           - name: macOS arm64
-            os: macos-15
+            os: macos-14
             platform: macos
             archs: arm64
             runner_arch: arm64
-            macos_deployment_target: "15.0"
+            macos_deployment_target: "14.0"
             setup_beam: true
 
           - name: macOS x86_64
@@ -42,7 +42,7 @@ jobs:
             platform: macos
             archs: x86_64
             runner_arch: x86_64
-            macos_deployment_target: "15.0"
+            macos_deployment_target: "14.0"
             setup_beam: true
 
           - name: Windows x64
