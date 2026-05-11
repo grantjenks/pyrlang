@@ -35,7 +35,7 @@ jobs:
             archs: arm64
             runner_arch: arm64
             macos_deployment_target: "14.0"
-            setup_beam: true
+            setup_beam: false
 
           - name: macOS x86_64
             os: macos-15-intel
@@ -43,7 +43,7 @@ jobs:
             archs: x86_64
             runner_arch: x86_64
             macos_deployment_target: "14.0"
-            setup_beam: true
+            setup_beam: false
 
           - name: Windows x64
             os: windows-2025
@@ -107,6 +107,15 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ env.PYRLANG_OTP_VERSION }}
+
+      - name: Build macOS Erlang/OTP
+        if: matrix.platform == 'macos'
+        env:
+          PYRLANG_OTP_PREFIX: ${{ runner.temp }}/pyrlang-otp
+        run: |
+          bash scripts/build-otp-macos.sh
+          echo "$PYRLANG_OTP_PREFIX/bin" >> "$GITHUB_PATH"
+          echo "_PYTHON_HOST_PLATFORM=macosx-${MACOSX_DEPLOYMENT_TARGET}-${{ matrix.archs }}" >> "$GITHUB_ENV"
 
       - name: Show tool versions
         run: |
