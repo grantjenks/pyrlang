@@ -18,6 +18,8 @@ main(Args) ->
 -spec run([string() | binary()]) -> {ok, term()} | {error, term()}.
 run(Args) ->
     case parse_args(Args) of
+        {ok, #{command := Command, command_args := CommandArgs, path := ExtraPath}} ->
+            run_command(Command, CommandArgs, ExtraPath);
         {ok, #{file := File, file_args := FileArgs, path := ExtraPath}} ->
             FilePath = to_list(File),
             ok = pyrlang:set_path(
@@ -39,6 +41,10 @@ parse_args(Args) ->
 
 parse_args([], _Options, undefined) ->
     {error, usage};
+parse_args(["-c", Command | Rest], Options, undefined) ->
+    {ok, Options#{command => Command, command_args => Rest}};
+parse_args(["-c" | _Rest], _Options, _File) ->
+    {error, missing_command};
 parse_args(["-m", Module | Rest], Options, undefined) ->
     {ok, Options#{module => Module, module_args => Rest}};
 parse_args(["-m" | _Rest], _Options, _File) ->
@@ -72,6 +78,29 @@ is_option([$- | _]) ->
     true;
 is_option(_Arg) ->
     false.
+
+run_command(Command, CommandArgs, ExtraPath) ->
+    ok = pyrlang:start(),
+    ok = pyrlang:set_path(ExtraPath ++ pyrlang_module:path()),
+    ok = pyrlang_module:set_argv(["-c" | CommandArgs]),
+    case pyrlang_parser:parse_module(Command) of
+        {ok, Ast} ->
+            Env0 = (pyrlang_builtins:env())#{
+                <<"__name__">> => <<"__main__">>,
+                <<"__package__">> => none
+            },
+            try
+                {Value, _Env} = pyrlang_eval:eval_module(Ast, Env0),
+                {ok, Value}
+            catch
+                throw:{py_exception, Exception} ->
+                    {error, Exception};
+                error:Reason ->
+                    {error, Reason}
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 run_module(Module, ModuleArgs, ExtraPath) ->
     ok = pyrlang:start(),

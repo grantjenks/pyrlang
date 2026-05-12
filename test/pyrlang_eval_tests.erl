@@ -168,6 +168,7 @@ string_concat_test() ->
     ?assertEqual({ok, <<"Test_Proj 1Name">>}, pyrlang:eval_expr("'test_PROJ 1name'.title()")),
     ?assertEqual({ok, <<"User name">>}, pyrlang:eval_expr("'user NAME'.capitalize()")),
     ?assertEqual({ok, true}, pyrlang:eval_expr("repr('Todo') == \"'Todo'\"")),
+    ?assertEqual(<<"'\\xe4\\n\\xdc'">>, pyrlang_builtins:builtin_repr(<<228, 10, 220>>)),
     ?assertEqual({ok, true}, pyrlang:eval_expr("'%r' % 'Todo' == \"'Todo'\"")),
     ?assertEqual({ok, <<"0007">>}, pyrlang:eval_expr("'%04i' % 7")),
     ?assertEqual({ok, true}, pyrlang:eval_expr("'a\\r\\nb\\n'.splitlines() == ['a', 'b']")),

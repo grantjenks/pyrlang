@@ -27,6 +27,29 @@ pyrlang_cli_runs_source_file_with_script_args_test() ->
     ),
     cleanup_tree(Dir).
 
+pyrlang_cli_runs_command_string_with_command_args_test() ->
+    pyrlang_heap:init(),
+    ?assertEqual(
+        {ok, <<"-c:first:second">>},
+        pyrlang_cli:run([
+            "-c",
+            "import sys\nsys.argv[0] + ':' + sys.argv[1] + ':' + sys.argv[2]\n",
+            "first",
+            "second"
+        ])
+    ).
+
+pyrlang_cli_runs_command_string_with_extra_import_path_test() ->
+    pyrlang_heap:init(),
+    Dir = temp_dir("pyrlang_cli_command_path"),
+    ok = file:make_dir(Dir),
+    ok = file:write_file(filename:join(Dir, "helper.py"), <<"value = 42\n">>),
+    ?assertEqual(
+        {ok, 42},
+        pyrlang_cli:run(["--path", Dir, "-c", "import helper\nhelper.value\n"])
+    ),
+    cleanup_tree(Dir).
+
 pyrlang_cli_runs_module_main_test() ->
     pyrlang_heap:init(),
     Dir = temp_dir("pyrlang_cli_module"),
@@ -83,6 +106,13 @@ pyrlang_escript_finds_ebin_from_other_working_directory_test() ->
     Command = "cd /tmp && escript " ++ quote(Script) ++ " " ++ quote(Path),
     ?assertEqual("42\n", os:cmd(Command)),
     cleanup_tree(Dir).
+
+pyrlang_escript_runs_command_string_test() ->
+    pyrlang_heap:init(),
+    Root = filename:absname("."),
+    Script = filename:join([Root, "bin", "pyrlang"]),
+    Command = "escript " ++ quote(Script) ++ " -c " ++ quote("print('hello')"),
+    ?assertEqual("hello\n", os:cmd(Command)).
 
 pyrlang_and_pyrunicorn_escript_wrappers_exist_test() ->
     ?assertMatch({ok, _Info}, file:read_file_info(filename:join(["bin", "pyrlang"]))),

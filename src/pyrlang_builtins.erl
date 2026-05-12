@@ -149,6 +149,7 @@ env() ->
         <<"object">> => builtin_type_class(<<"object">>, {py_native_varargs, fun builtin_object/1}),
         <<"open">> => {py_native_call, fun builtin_open_call/2},
         <<"ord">> => fun builtin_ord/1,
+        <<"print">> => {py_native_call, fun builtin_print/2},
         <<"property">> => builtin_type_class(
             <<"property">>, {py_native_call, fun builtin_property/2}
         ),
@@ -1098,6 +1099,49 @@ builtin_format([Value, _Spec]) ->
 builtin_format(Args) ->
     erlang:error({arity_error, {format, length(Args)}}).
 
+builtin_print(Args, KwArgs) ->
+    ensure_allowed_kwargs(KwArgs, [<<"sep">>, <<"end">>, <<"file">>, <<"flush">>], print),
+    Sep = print_text_arg(maps:get(<<"sep">>, KwArgs, <<" ">>), <<" ">>),
+    End = print_text_arg(maps:get(<<"end">>, KwArgs, <<"\n">>), <<"\n">>),
+    Text = print_join([builtin_str(Arg) || Arg <- Args], Sep),
+    ok = print_write(<<Text/binary, End/binary>>, maps:get(<<"file">>, KwArgs, none)),
+    none.
+
+print_text_arg(none, Default) ->
+    Default;
+print_text_arg(Value, _Default) when is_binary(Value) ->
+    Value;
+print_text_arg(Value, _Default) when is_list(Value) ->
+    unicode:characters_to_binary(Value);
+print_text_arg({py_ref, _} = Value, _Default) ->
+    case string_subclass_value(Value) of
+        {ok, Text} -> Text;
+        error -> erlang:error({type_error, {print_expected_string_or_none, Value}})
+    end;
+print_text_arg(Value, _Default) ->
+    erlang:error({type_error, {print_expected_string_or_none, Value}}).
+
+print_join([], _Sep) ->
+    <<>>;
+print_join([Part], _Sep) ->
+    Part;
+print_join([Part | Rest], Sep) ->
+    lists:foldl(fun(Next, Acc) -> <<Acc/binary, Sep/binary, Next/binary>> end, Part, Rest).
+
+print_write(Output, none) ->
+    io:put_chars(Output);
+print_write(Output, {py_ref, _} = File) ->
+    try pyrlang_object:get_attr(File, <<"write">>) of
+        Write ->
+            _ = pyrlang_eval:call(Write, [Output]),
+            ok
+    catch
+        error:{attribute_error, _Name} ->
+            erlang:error({type_error, {print_file_without_write, File}})
+    end;
+print_write(_Output, File) ->
+    erlang:error({type_error, {print_file_without_write, File}}).
+
 builtin_bytes([]) ->
     <<>>;
 builtin_bytes([Value]) when is_binary(Value) ->
@@ -1272,7 +1316,17 @@ repr_escape(<<"\r", Rest/binary>>, Acc) ->
 repr_escape(<<"\t", Rest/binary>>, Acc) ->
     repr_escape(Rest, <<Acc/binary, "\\t">>);
 repr_escape(<<Char/utf8, Rest/binary>>, Acc) ->
-    repr_escape(Rest, <<Acc/binary, Char/utf8>>).
+    repr_escape(Rest, <<Acc/binary, Char/utf8>>);
+repr_escape(<<Byte, Rest/binary>>, Acc) ->
+    repr_escape(
+        Rest,
+        <<Acc/binary, "\\x", (hex_digit(Byte bsr 4)), (hex_digit(Byte band 15))>>
+    ).
+
+hex_digit(Value) when Value < 10 ->
+    $0 + Value;
+hex_digit(Value) ->
+    $a + (Value - 10).
 
 builtin_ref_str(Ref) ->
     try pyrlang_object:get_attr(Ref, <<"__str__">>) of
