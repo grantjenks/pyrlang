@@ -51,7 +51,13 @@ env_paths(Name) ->
         false ->
             [];
         Value ->
-            [Path || Path <- string:split(Value, ":", all), Path =/= ""]
+            [Path || Path <- string:split(Value, env_path_separator(), all), Path =/= ""]
+    end.
+
+env_path_separator() ->
+    case os:type() of
+        {win32, _} -> ";";
+        _ -> ":"
     end.
 
 site_package_paths() ->
