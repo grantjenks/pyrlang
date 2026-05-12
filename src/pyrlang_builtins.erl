@@ -265,11 +265,13 @@ builtin_type_methods(<<"str">>) ->
     };
 builtin_type_methods(<<"bytes">>) ->
     #{
+        <<"hex">> => {py_native_varargs, fun bytes_hex/1},
         <<"maketrans">> => {py_native_varargs, fun bytes_maketrans/1},
         <<"fromhex">> => {py_native_varargs, fun bytes_fromhex/1}
     };
 builtin_type_methods(<<"bytearray">>) ->
     #{
+        <<"hex">> => {py_native_varargs, fun bytes_hex/1},
         <<"maketrans">> => {py_native_varargs, fun bytes_maketrans/1},
         <<"fromhex">> => {py_native_varargs, fun bytes_fromhex/1}
     };
@@ -1783,6 +1785,16 @@ bytes_translation_pairs(<<>>, <<>>) ->
     [];
 bytes_translation_pairs(<<FromByte:8, FromRest/binary>>, <<ToByte:8, ToRest/binary>>) ->
     [{FromByte, ToByte} | bytes_translation_pairs(FromRest, ToRest)].
+
+bytes_hex([Value]) ->
+    bytes_hex_binary(normalize_name(Value), <<>>);
+bytes_hex(Args) ->
+    erlang:error({arity_error, {hex, length(Args)}}).
+
+bytes_hex_binary(<<>>, Acc) ->
+    Acc;
+bytes_hex_binary(<<Byte:8, Rest/binary>>, Acc) ->
+    bytes_hex_binary(Rest, <<Acc/binary, (hex_digit(Byte bsr 4)), (hex_digit(Byte band 15))>>).
 
 bytes_fromhex([Value]) ->
     case bytes_fromhex_binary(normalize_name(Value), need_high, <<>>) of

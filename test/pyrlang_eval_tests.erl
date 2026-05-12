@@ -1112,8 +1112,8 @@ builtin_scalar_constructors_test() ->
         "table = list(range(256))\n"
         "for c in b'-':\n"
         "    table[c] = chr(c)\n"
-        "int('40') + int('ff', 16) + int('0b10', 0) + int(2.9) + int(True) + (float('2.5') == 2.5) + bool(data) + (bool(empty) == False) + len(mutable) + ord('A') + (chr(66) == 'B') + (chr(b'-') == '-') + (table[45] == '-') + (str(bytes([65, 66]), 'ascii') == 'AB')\n",
-    ?assertMatch({ok, 373, _Env}, pyrlang:run_string(Source)).
+        "int('40') + int('ff', 16) + int('0b10', 0) + int(2.9) + int(True) + (float('2.5') == 2.5) + bool(data) + (bool(empty) == False) + len(mutable) + ord('A') + (chr(66) == 'B') + (chr(b'-') == '-') + (table[45] == '-') + (str(bytes([65, 66]), 'ascii') == 'AB') + (bytes([1, 15, 255]).hex() == '010fff') + (mutable.hex() == '43')\n",
+    ?assertMatch({ok, 375, _Env}, pyrlang:run_string(Source)).
 
 percent_hex_format_accepts_single_byte_values_test() ->
     pyrlang_heap:init(),

@@ -1580,6 +1580,8 @@ builtin_attribute(Binary, <<"encode">>) when is_binary(Binary) ->
 builtin_attribute(Binary, <<"decode">>) when is_binary(Binary) ->
     {ok,
         {py_native_call, fun(Args, KwArgs) -> binary_codec_call(Binary, Args, KwArgs, decode) end}};
+builtin_attribute(Binary, <<"hex">>) when is_binary(Binary) ->
+    {ok, fun() -> binary_hex(Binary) end};
 builtin_attribute(Binary, <<"translate">>) when is_binary(Binary) ->
     {ok, fun(Table) -> string_translate(Binary, Table) end};
 builtin_attribute(Binary, <<"__iter__">>) when is_binary(Binary) ->
@@ -2315,6 +2317,21 @@ string_isidentifier(Binary) ->
 
 string_isascii(Binary) ->
     lists:all(fun(Byte) -> Byte < 128 end, binary_to_list(Binary)).
+
+binary_hex(Binary) ->
+    binary_hex(Binary, <<>>).
+
+binary_hex(<<>>, Acc) ->
+    Acc;
+binary_hex(<<Byte:8, Rest/binary>>, Acc) ->
+    binary_hex(
+        Rest, <<Acc/binary, (binary_hex_digit(Byte bsr 4)), (binary_hex_digit(Byte band 15))>>
+    ).
+
+binary_hex_digit(Value) when Value < 10 ->
+    $0 + Value;
+binary_hex_digit(Value) ->
+    $a + (Value - 10).
 
 string_format(Format, Args, KwArgs) ->
     string_format_parts(Format, Args, KwArgs, 0, []).

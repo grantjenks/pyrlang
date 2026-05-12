@@ -16,7 +16,9 @@ env:
     path = pathlib.Path(tempfile.mkdtemp()) / 'smoke.py';
     path.write_text('40 + 2\n', encoding='utf-8');
     out = subprocess.check_output(['pyrlang', str(path)], text=True).strip();
-    assert out == '42', out"
+    assert out == '42', out;
+    uuid_out = subprocess.check_output(['pyrlang', '-c', 'import uuid; print(uuid.uuid4())'], text=True).strip();
+    assert len(uuid_out) == 36 and uuid_out.count('-') == 4, uuid_out"
   PYRLANG_OTP_VERSION: "28.5"
 
 jobs:
