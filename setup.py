@@ -21,7 +21,7 @@ OTP_APPS = ("kernel", "stdlib", "crypto")
 
 
 def package_version() -> str:
-    return os.environ.get("PYRLANG_VERSION", "0.1.5")
+    return os.environ.get("PYRLANG_VERSION", "0.1.6")
 
 
 def erl_eval(expr: str) -> str:

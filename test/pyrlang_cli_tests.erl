@@ -114,6 +114,31 @@ pyrlang_escript_runs_command_string_test() ->
     Command = "escript " ++ quote(Script) ++ " -c " ++ quote("print('hello')"),
     ?assertEqual("hello\n", os:cmd(Command)).
 
+pyrlang_escript_repl_keeps_state_and_prints_expression_repr_test() ->
+    pyrlang_heap:init(),
+    Root = filename:absname("."),
+    Script = filename:join([Root, "bin", "pyrlang"]),
+    Input = "answer = 40\nanswer + 2\nname = 'Guido'\nname\n",
+    Command = "printf " ++ quote(Input) ++ " | escript " ++ quote(Script),
+    ?assertEqual("pyr> pyr> 42\npyr> pyr> 'Guido'\npyr> ", os:cmd(Command)).
+
+pyrlang_escript_repl_runs_multiline_block_test() ->
+    pyrlang_heap:init(),
+    Root = filename:absname("."),
+    Script = filename:join([Root, "bin", "pyrlang"]),
+    Input = "def inc(value):\n    return value + 1\ninc(41)\n",
+    Command = "printf " ++ quote(Input) ++ " | escript " ++ quote(Script),
+    ?assertEqual("pyr> ...> pyr> 42\npyr> ", os:cmd(Command)).
+
+pyrlang_escript_repl_import_this_does_not_echo_module_ref_test() ->
+    pyrlang_heap:init(),
+    Root = filename:absname("."),
+    Script = filename:join([Root, "bin", "pyrlang"]),
+    Command = "printf " ++ quote("import this\n") ++ " | escript " ++ quote(Script),
+    Output = os:cmd(Command),
+    ?assertNotEqual(nomatch, string:find(Output, "The Zen of Python")),
+    ?assertEqual(nomatch, string:find(Output, "py_ref")).
+
 pyrlang_and_pyrunicorn_escript_wrappers_exist_test() ->
     ?assertMatch({ok, _Info}, file:read_file_info(filename:join(["bin", "pyrlang"]))),
     ?assertMatch({ok, _Info}, file:read_file_info(filename:join(["bin", "pyrunicorn"]))).

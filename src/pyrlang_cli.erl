@@ -18,6 +18,8 @@ main(Args) ->
 -spec run([string() | binary()]) -> {ok, term()} | {error, term()}.
 run(Args) ->
     case parse_args(Args) of
+        {ok, #{shell := true, path := ExtraPath}} ->
+            run_shell(ExtraPath);
         {ok, #{command := Command, command_args := CommandArgs, path := ExtraPath}} ->
             run_command(Command, CommandArgs, ExtraPath);
         {ok, #{file := File, file_args := FileArgs, path := ExtraPath}} ->
@@ -39,8 +41,8 @@ run(Args) ->
 parse_args(Args) ->
     parse_args([to_list(Arg) || Arg <- Args], #{path => []}, undefined).
 
-parse_args([], _Options, undefined) ->
-    {error, usage};
+parse_args([], Options, undefined) ->
+    {ok, Options#{shell => true}};
 parse_args(["-c", Command | Rest], Options, undefined) ->
     {ok, Options#{command => Command, command_args => Rest}};
 parse_args(["-c" | _Rest], _Options, _File) ->
@@ -108,6 +110,140 @@ run_module(Module, ModuleArgs, ExtraPath) ->
     try
         {Value, _Env} = pyrlang_module:run_as_main(Module, ModuleArgs),
         {ok, Value}
+    catch
+        throw:{py_exception, Exception} ->
+            {error, Exception};
+        error:Reason ->
+            {error, Reason}
+    end.
+
+run_shell(ExtraPath) ->
+    ok = pyrlang:start(),
+    ok = pyrlang:set_path(ExtraPath ++ pyrlang_module:path()),
+    ok = pyrlang_module:set_argv([""]),
+    Env0 = (pyrlang_builtins:env())#{
+        <<"__name__">> => <<"__main__">>,
+        <<"__package__">> => none
+    },
+    repl_loop(Env0).
+
+repl_loop(Env) ->
+    case read_repl_line("pyr> ") of
+        eof ->
+            {ok, none};
+        Line ->
+            case string:trim(Line) of
+                "" ->
+                    repl_loop(Env);
+                "exit()" ->
+                    {ok, none};
+                "quit()" ->
+                    {ok, none};
+                _ ->
+                    case read_repl_source([Line]) of
+                        eof ->
+                            {ok, none};
+                        {ok, Kind, Ast} ->
+                            case eval_repl_ast(Kind, Ast, Env) of
+                                {ok, Env1} ->
+                                    repl_loop(Env1);
+                                {error, Reason} ->
+                                    io:format(standard_error, "~s~n", [format_value(Reason)]),
+                                    repl_loop(Env)
+                            end;
+                        {error, Reason} ->
+                            io:format(standard_error, "~s~n", [format_value(Reason)]),
+                            repl_loop(Env)
+                    end
+            end
+    end.
+
+read_repl_source(Lines) ->
+    Source = lists:flatten(lists:reverse(Lines)),
+    case parse_repl_source(Source) of
+        {ok, _Kind, _Ast} = Ok ->
+            Ok;
+        {incomplete, _Reason} ->
+            case read_repl_line("...> ") of
+                eof -> eof;
+                Line -> read_repl_source([Line | Lines])
+            end;
+        {error, _Reason} = Error ->
+            Error
+    end.
+
+read_repl_line(Prompt) ->
+    case io:get_line(Prompt) of
+        eof -> eof;
+        Line -> Line
+    end.
+
+parse_repl_source(Source) ->
+    case pyrlang_parser:parse_expr(Source) of
+        {ok, Ast} ->
+            {ok, expr, Ast};
+        {error, _ExprReason} ->
+            case pyrlang_parser:parse_module(Source) of
+                {ok, Ast} ->
+                    {ok, module, Ast};
+                {error, Reason} ->
+                    case repl_needs_more_input(Source, Reason) of
+                        true -> {incomplete, Reason};
+                        false -> {error, Reason}
+                    end
+            end
+    end.
+
+repl_needs_more_input(Source, Reason) ->
+    source_has_open_group(Source) orelse
+        source_ends_with_backslash(Source) orelse
+        incomplete_block_error(Reason).
+
+source_has_open_group(Source) ->
+    group_balance(Source, 0) > 0.
+
+group_balance([], Balance) ->
+    Balance;
+group_balance([Char | Rest], Balance) when Char =:= $(; Char =:= $[; Char =:= ${ ->
+    group_balance(Rest, Balance + 1);
+group_balance([Char | Rest], Balance) when Char =:= $); Char =:= $]; Char =:= $} ->
+    group_balance(Rest, max(0, Balance - 1));
+group_balance([_Char | Rest], Balance) ->
+    group_balance(Rest, Balance).
+
+source_ends_with_backslash(Source) ->
+    case string:trim(Source, trailing) of
+        [] -> false;
+        Trimmed -> lists:last(Trimmed) =:= $\\
+    end.
+
+incomplete_block_error({expected_indented_block, _Line}) ->
+    true;
+incomplete_block_error({bad_assignment, _Line, unexpected_end}) ->
+    true;
+incomplete_block_error({bad_expression_statement, _Line, {expected, comma_or_rparen}}) ->
+    true;
+incomplete_block_error(_Reason) ->
+    false.
+
+eval_repl_ast(expr, Ast, Env0) ->
+    try
+        {Value, Env1} = pyrlang_eval:eval_expr(Ast, Env0),
+        case Value of
+            none -> ok;
+            _ -> io:format("~s~n", [pyrlang_builtins:builtin_repr(Value)])
+        end,
+        {ok, pyrlang_eval:bind_module_globals(Env1)}
+    catch
+        throw:{py_exception, Exception} ->
+            {error, Exception};
+        error:Reason ->
+            {error, Reason}
+    end;
+eval_repl_ast(module, Ast, Env0) ->
+    try
+        {_Value, Env1} = pyrlang_eval:eval_module(Ast, Env0),
+        {ok, Env1}
     catch
         throw:{py_exception, Exception} ->
             {error, Exception};
